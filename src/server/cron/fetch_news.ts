@@ -121,7 +121,7 @@ async function fetchGoogleNews() {
                     category: 'AI News',
                     source_url: item.link,
                     impact_score: 0,
-                    published: false,
+                    published: true,
                 });
             }
         }
@@ -157,7 +157,7 @@ async function fetchTechCrunch() {
                     category: 'Startup Launch',
                     source_url: item.link,
                     impact_score: 0,
-                    published: false,
+                    published: true,
                 });
             }
         }
@@ -194,7 +194,7 @@ async function fetchArxiv() {
                     category: 'Research Paper',
                     source_url: item.link,
                     impact_score: 0,
-                    published: false,
+                    published: true,
                 });
             }
         }
@@ -248,7 +248,7 @@ async function fetchGitHub() {
                     category: 'GitHub Release',
                     source_url: repo.html_url,
                     impact_score: 0,
-                    published: false,
+                    published: true,
                 });
             }
         }
@@ -283,7 +283,7 @@ async function fetchHackerNews() {
                     category: 'Community News',
                     source_url: item.link,
                     impact_score: 0,
-                    published: false,
+                    published: true,
                 });
             }
         }
@@ -342,7 +342,7 @@ async function fetchReddit() {
                         category: 'Community News',
                         source_url: item.link,
                         impact_score: 0,
-                        published: false,
+                        published: true,
                     });
                 }
             }
