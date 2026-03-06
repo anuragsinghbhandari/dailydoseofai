@@ -20,14 +20,7 @@ export function SiteHeader() {
                         >
                             Home
                         </Link>
-                        <Link
-                            to="/admin/dashboard"
-                            className="text-sm font-medium transition-colors hover:text-primary"
-                            activeProps={{ className: "text-foreground font-semibold" }}
-                            inactiveProps={{ className: "text-foreground/60" }}
-                        >
-                            Admin
-                        </Link>
+
                     </nav>
                     <div className="flex items-center gap-2 pl-4 border-l border-border/50">
                         <ThemeToggle />
