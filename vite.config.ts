@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import viteReact from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { nitro } from "nitro/vite";
 
 export default defineConfig({
   server: {
@@ -15,6 +16,7 @@ export default defineConfig({
         routesDirectory: "routes"
       }
     }),
+    nitro(),
     viteReact()
   ]
 });
