@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+dist/
+.output/
+.tanstack/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+build/
+output/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Editor/System
+.DS_Store
+*.local
+.vscode/
+.idea/
+
+# TanStack Router generated file (usually gitignored because it's auto-generated on dev/build)
+src/routeTree.gen.ts

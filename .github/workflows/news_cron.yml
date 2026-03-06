@@ -1,0 +1,29 @@
+name: Automated News Pipeline
+
+on:
+  schedule:
+    # Run at 8:00, 14:00, and 20:00 UTC (roughly morning, noon, night)
+    - cron: '0 8,14,20 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  fetch-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run News Fetch Script
+        run: npx tsx src/server/cron/fetch_news.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
