@@ -173,16 +173,7 @@ function UpdateDetailPage() {
             </p>
           </section>
 
-          {update.why_it_matters && update.why_it_matters !== 'Pending review' && (
-            <section>
-              <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
-                Why it matters
-              </h2>
-              <p className="leading-relaxed">
-                {update.why_it_matters}
-              </p>
-            </section>
-          )}
+
 
           {update.content && !update.content.startsWith('Source: http') && (
             <section>

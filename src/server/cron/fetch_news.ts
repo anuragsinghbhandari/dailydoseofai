@@ -401,26 +401,38 @@ async function fetchNews() {
 
             if (ai) {
                 try {
-                    const prompt = `You are an expert AI news curator. Read the following article title and raw scraped snippet. Extract the "main crux" of the news into a highly readable, concise 2-3 sentence summary that clearly explains what happened and why it matters in the AI space.
+                    const prompt = `You are an expert AI news curator. Read the following article title and raw scraped snippet. 
+                    1. Extract the "main crux" of the news into a highly readable, concise 2-3 sentence summary that clearly explains what happened and why it matters in the AI space.
+                    2. Rate the "Impact Score" of this news for the AI community on a scale of 0 to 10 (where 10 is a world-changing event like a major model release or a fundamental paper, and 1 is a minor tool update).
                     
 Title: ${update.title}
 Raw Snippet: ${update.summary}
 Source: ${update.source_url}
 
-Return ONLY the summary paragraph. No introductory text. No markdown formatting.`;
+Return the results in JSON format with the keys: "summary" and "impact_score".`;
 
                     const response = await ai.models.generateContent({
                         model: "gemini-2.5-flash",
                         contents: prompt,
                         config: {
-                            temperature: 0.2, // Low temperature for factual summarization
+                            temperature: 0.2,
+                            responseMimeType: "application/json",
                         }
                     });
 
                     if (response.text) {
-                        update.summary = response.text.trim();
-                        // Mark it as AI reviewed
-                        update.why_it_matters = 'AI Summary generated successfully.';
+                        try {
+                            const data = JSON.parse(response.text.trim());
+                            if (data.summary) update.summary = data.summary;
+                            if (typeof data.impact_score === 'number') {
+                                // Ensure score is an integer between 0-10
+                                update.impact_score = Math.min(10, Math.max(0, Math.round(data.impact_score)));
+                            }
+                        } catch (parseError) {
+                            console.error(`Failed to parse AI response for ${update.title}. Text: ${response.text}`, parseError);
+                            // Fallback to text if parsing fails (at least we get a summary)
+                            update.summary = response.text.trim().substring(0, 500);
+                        }
                     }
                 } catch (aiError) {
                     console.error(`Failed to generate AI summary for ${update.title}. Falling back to scraped snippet.`, aiError);
