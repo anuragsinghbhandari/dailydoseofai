@@ -27,3 +27,4 @@ jobs:
         run: npx tsx src/server/cron/fetch_news.ts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
