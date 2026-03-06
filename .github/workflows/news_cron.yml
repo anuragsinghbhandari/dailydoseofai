@@ -2,7 +2,7 @@ name: Automated News Pipeline
 
 on:
   schedule:
-    # Run at 8:00, 14:00, and 20:00 UTC (roughly morning, noon, night)
+    # Run at 8:00, 14:00, and 20:00 ist (roughly morning, noon, night)
     - cron: '30 2,8,14 * * *'
   # Allow manual trigger
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Dependencies
         run: npm ci
