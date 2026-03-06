@@ -31,6 +31,9 @@
     ]
   },
   "include": [
-    "src"
+    "src",
+    "vite.config.ts",
+    "tailwind.config.mts",
+    "drizzle.config.ts"
   ]
 }
