@@ -3,7 +3,7 @@ name: Automated News Pipeline
 on:
   schedule:
     # Run at 8:00, 14:00, and 20:00 ist (roughly morning, noon, night)
-    - cron: '30 2,8,14 * * *'
+    - cron: '30 1,7,14 * * *'
   # Allow manual trigger
   workflow_dispatch:
 
