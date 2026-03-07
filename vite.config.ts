@@ -16,7 +16,9 @@ export default defineConfig({
         routesDirectory: "routes"
       }
     }),
-    nitro(),
+    nitro({
+      entry: "src/server.ts"
+    }),
     viteReact()
   ]
 });
