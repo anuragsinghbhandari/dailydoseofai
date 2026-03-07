@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getUpdateBySlug, getUpdatesByDate } from "@/server/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getUpdateBySlug, getAdjacentUpdates } from "@/server/queries";
 import { useSwipeable } from "react-swipeable";
 import {
   Card,
@@ -23,35 +23,40 @@ function UpdateDetailPage() {
   const { slug } = Route.useParams();
   const navigate = useNavigate();
 
+  const queryClient = useQueryClient();
+
+  // Look up if this exact article already exists in the "Today" list cache 
+  const todayUpdates = queryClient.getQueryData(["updates", "today"]) as any[] | undefined;
+  const initialUpdateData = todayUpdates?.find(u => u.slug === slug);
+
   const query = useQuery({
     queryKey: ["update", slug],
-    queryFn: () => (getUpdateBySlug as any)({ data: slug })
+    queryFn: () => (getUpdateBySlug as any)({ data: slug }),
+    initialData: initialUpdateData
   });
 
-  const dateObj = query.data ? new Date(query.data.created_at) : null;
-  const dateStr = dateObj
-    ? `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
-    : undefined;
+  // 1. Try to find the adjacent articles in the React Query cache first
 
-  const dayUpdatesQuery = useQuery({
-    queryKey: ["dayUpdates", dateStr],
-    queryFn: () => (getUpdatesByDate as any)({ data: dateStr }),
-    enabled: !!dateStr
-  });
+  let prevCacheSlug = null;
+  let nextCacheSlug = null;
 
-  let prevSlug = null;
-  let nextSlug = null;
-
-  if (dayUpdatesQuery.data) {
-    const list = dayUpdatesQuery.data as any[];
-    const currentIndex = list.findIndex((u) => u.slug === slug);
+  if (todayUpdates) {
+    const currentIndex = todayUpdates.findIndex((u) => u.slug === slug);
     if (currentIndex !== -1) {
-      // In the displayed UI list, "Previous" means going up towards index 0
-      prevSlug = list[currentIndex - 1]?.slug || null;
-      // "Next" means continuing down the list to higher indexes
-      nextSlug = list[currentIndex + 1]?.slug || null;
+      prevCacheSlug = todayUpdates[currentIndex - 1]?.slug || null;
+      nextCacheSlug = todayUpdates[currentIndex + 1]?.slug || null;
     }
   }
+
+  // 2. Fallback to API if not in cache (e.g. direct link visit)
+  const adjacentQuery = useQuery({
+    queryKey: ["adjacent", slug],
+    queryFn: () => (getAdjacentUpdates as any)({ data: { slug } }),
+    enabled: !todayUpdates
+  });
+
+  const prevSlug = prevCacheSlug || adjacentQuery.data?.prevSlug || null;
+  const nextSlug = nextCacheSlug || adjacentQuery.data?.nextSlug || null;
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {
