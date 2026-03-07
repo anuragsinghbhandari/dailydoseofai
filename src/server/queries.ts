@@ -1,7 +1,9 @@
 import { and, desc, eq, gte, lte, lt, gt, or, sql } from "drizzle-orm";
 import { db } from "./db";
-import { updates, type Update } from "./schema";
+import { updates, user_views, type Update } from "./schema";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { auth } from "./auth";
 
 function startOfToday() {
   const d = new Date();
@@ -26,21 +28,34 @@ function startOfCurrentMonth() {
   return d;
 }
 
-async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {
-  const rows = await db
-    .select()
-    .from(updates)
-    .where(
-      and(
-        eq(updates.published, true),
-        gte(updates.created_at, from),
-        lte(updates.created_at, to)
-      )
-    )
-    .orderBy(desc(updates.impact_score), desc(updates.created_at))
-    .limit(300);
+async function getSession() {
+  const req = getRequest();
+  if (!req) return null;
+  return await auth.api.getSession({ headers: req.headers });
+}
 
-  return rows as Update[];
+async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {
+  const session = await getSession();
+
+  let queryBuilder: any = db.select({
+    update: updates,
+    ...(session ? { isSeen: sql<boolean>`EXISTS (SELECT 1 FROM user_views WHERE user_views.update_id = updates.id AND user_views.user_id = ${session.user.id})` } : {})
+  }).from(updates);
+
+  queryBuilder = queryBuilder.where(
+    and(
+      eq(updates.published, true),
+      gte(updates.created_at, from),
+      lte(updates.created_at, to)
+    )
+  ).orderBy(desc(updates.impact_score), desc(updates.created_at)).limit(300);
+
+  const rows = await queryBuilder;
+
+  return rows.map((r: any) => ({
+    ...r.update,
+    isSeen: r.isSeen ?? false
+  })) as Update[];
 }
 
 export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async () => {

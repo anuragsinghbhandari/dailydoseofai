@@ -16,11 +16,13 @@ interface UpdateCardProps {
 }
 
 export function UpdateCard({ update }: UpdateCardProps) {
+  const isSeen = (update as any).isSeen;
+
   return (
     <Link
       to="/update/$slug"
       params={{ slug: update.slug }}
-      className="block group h-full relative"
+      className={`block group h-full relative ${isSeen ? 'opacity-70 hover:opacity-100' : ''}`}
     >
       <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-purple-600 rounded-xl blur opacity-0 group-hover:opacity-20 transition duration-500"></div>
       <Card className="relative h-full transition-all duration-300 transform group-hover:-translate-y-1 group-hover:scale-[1.01] hover:shadow-2xl hover:border-primary/50 flex flex-col bg-card/80 backdrop-blur-sm">

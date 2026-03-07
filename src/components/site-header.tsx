@@ -1,7 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { ThemeToggle } from "./theme-toggle";
+import { AuthButton } from "./auth-button";
+import { useSession } from "@/lib/auth";
 
 export function SiteHeader() {
+    const { data: session } = useSession();
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/40 backdrop-blur-xl supports-[backdrop-filter]:bg-background/20 transition-all">
             <div className="container flex h-16 items-center gap-6">
@@ -20,10 +23,20 @@ export function SiteHeader() {
                         >
                             Home
                         </Link>
-
+                        {session && (
+                            <Link
+                                to="/bookmarks"
+                                className="text-sm font-medium transition-colors hover:text-primary"
+                                activeProps={{ className: "text-foreground font-semibold" }}
+                                inactiveProps={{ className: "text-foreground/60" }}
+                            >
+                                Bookmarks
+                            </Link>
+                        )}
                     </nav>
                     <div className="flex items-center gap-2 pl-4 border-l border-border/50">
                         <ThemeToggle />
+                        <AuthButton />
                     </div>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { getUpdateBySlug, getUpdatesByDate } from "@/server/queries";
 import { useSwipeable } from "react-swipeable";
 import {
@@ -14,6 +15,9 @@ import { CategoryBadge } from "@/components/category-badge";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { EngagementBar } from "@/components/engagement-bar";
+import { CommentsSection } from "@/components/comments-section";
+import { recordView } from "@/server/engagement";
 
 export const Route = createFileRoute("/update/$slug")({
   component: UpdateDetailPage
@@ -93,6 +97,14 @@ function UpdateDetailPage() {
     trackMouse: false
   });
 
+  const update = query.data;
+
+  useEffect(() => {
+    if (update?.id) {
+      (recordView as any)({ data: { updateId: update.id } }).catch(console.error);
+    }
+  }, [update?.id]);
+
   if (query.isLoading) {
     return (
       <div className="container py-8">
@@ -101,7 +113,7 @@ function UpdateDetailPage() {
     );
   }
 
-  if (!query.data) {
+  if (!update) {
     return (
       <div className="container py-8">
         <p className="text-sm text-muted-foreground">
@@ -110,8 +122,6 @@ function UpdateDetailPage() {
       </div>
     );
   }
-
-  const update = query.data;
 
   return (
     <div {...handlers} className="container max-w-4xl py-12 relative">
@@ -215,6 +225,9 @@ function UpdateDetailPage() {
               </div>
             </section>
           )}
+
+          <EngagementBar updateId={update.id} />
+          <CommentsSection updateId={update.id} />
         </article>
 
         <aside className="space-y-6">
