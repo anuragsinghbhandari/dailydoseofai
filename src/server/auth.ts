@@ -13,7 +13,7 @@ const getBaseURL = () => {
     // VITE_APP_URL is only available at build time (injected by Vite), NOT at server runtime - do not use
     // VERCEL_URL is the deployment URL set by Vercel (no https:// prefix)
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-    return "http://localhost:3000";
+    return "https://www.dailydoseofai.tech";
 };
 
 export const auth = betterAuth({
