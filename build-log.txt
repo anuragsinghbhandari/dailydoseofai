@@ -1,0 +1,236 @@
+
+> ai-dose@0.1.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 1951 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/public/assets/index-BQJc9TQP.css            67.66 kB │ gzip:  11.30 kB
+.output/public/assets/arrow-left-BTrMcAAr.js         0.16 kB │ gzip:   0.16 kB
+.output/public/assets/_layout-C4b3j2QG.js            0.33 kB │ gzip:   0.23 kB
+.output/public/assets/textarea-DY3TByqv.js           0.45 kB │ gzip:   0.32 kB
+.output/public/assets/today-BndIC5Wi.js              0.60 kB │ gzip:   0.40 kB
+.output/public/assets/week-BJ4rzGAv.js               0.60 kB │ gzip:   0.40 kB
+.output/public/assets/month-C0xTTu9F.js              0.60 kB │ gzip:   0.40 kB
+.output/public/assets/badge-DscOtMYO.js              0.72 kB │ gzip:   0.38 kB
+.output/public/assets/engagement-D0Q7gand.js         0.84 kB │ gzip:   0.48 kB
+.output/public/assets/card-BsVSN35h.js               0.98 kB │ gzip:   0.36 kB
+.output/public/assets/queries-DJ2Oa_Cs.js            1.05 kB │ gzip:   0.56 kB
+.output/public/assets/date._date-C54GiFYU.js         1.22 kB │ gzip:   0.71 kB
+.output/public/assets/bookmarks-0yIaPZS1.js          1.40 kB │ gzip:   0.68 kB
+.output/public/assets/category-badge-DSB8hWzz.js     1.75 kB │ gzip:   0.69 kB
+.output/public/assets/useMutation-CwaXfsDV.js        2.20 kB │ gzip:   0.90 kB
+.output/public/assets/update-list-D3WLG5lm.js        3.34 kB │ gzip:   1.43 kB
+.output/public/assets/createServerFn-DGw8GNb1.js     4.35 kB │ gzip:   1.84 kB
+.output/public/assets/dashboard-BlTPUoai.js          4.53 kB │ gzip:   1.59 kB
+.output/public/assets/create-update-Buc-0Ai2.js      5.27 kB │ gzip:   1.82 kB
+.output/public/assets/updates-D27AU1Zn.js            5.67 kB │ gzip:   2.60 kB
+.output/public/assets/edit-update._id-Dzb8N0oZ.js    5.91 kB │ gzip:   1.92 kB
+.output/public/assets/index-BiEflB2B.js              6.84 kB │ gzip:   2.22 kB
+.output/public/assets/skeleton-BAhO83EH.js           8.93 kB │ gzip:   3.27 kB
+.output/public/assets/update._slug-BxWbA0N2.js      14.68 kB │ gzip:   4.98 kB
+.output/public/assets/select-BHhpL3j4.js            56.88 kB │ gzip:  19.79 kB
+.output/public/assets/main-DDNEIRCv.js             544.73 kB │ gzip: 169.17 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.28s
+vite v7.3.1 building ssr environment for production...
+transforming...
+"getTelemetryAuthConfig" is imported from external module "@better-auth/telemetry" but never used in "node_modules/better-auth/dist/index.mjs".
+"createRequestHandler", "defineHandlerCallback", "transformPipeableStreamWithRouter" and "transformReadableStreamWithRouter" are imported from external module "@tanstack/router-core/ssr/server" but never used in "node_modules/@tanstack/start-server-core/dist/esm/index.js".
+"optionsMiddleware" is imported from external module "@better-auth/core/api" but never used in "node_modules/better-auth/dist/api/index.mjs".
+"RawStream" is imported from external module "@tanstack/router-core" but never used in "node_modules/@tanstack/start-client-core/dist/esm/index.js".
+"hydrate" and "json" are imported from external module "@tanstack/router-core/ssr/client" but never used in "node_modules/@tanstack/start-client-core/dist/esm/index.js".
+✓ 184 modules transformed.
+rendering chunks...
+node_modules/.nitro/vite/services/ssr/assets/index-BQJc9TQP.css                       67.66 kB
+node_modules/.nitro/vite/services/ssr/assets/start-HYkvq4Ni.js                         0.06 kB
+node_modules/.nitro/vite/services/ssr/assets/index-C6hDhOht.js                         0.11 kB
+node_modules/.nitro/vite/services/ssr/assets/createServerRpc-29xaFZcb.js               0.31 kB
+node_modules/.nitro/vite/services/ssr/assets/skeleton-B1x1w5sW.js                      0.32 kB
+node_modules/.nitro/vite/services/ssr/assets/createSsrRpc-BqHRO7jG.js                  0.47 kB
+node_modules/.nitro/vite/services/ssr/assets/_layout-FaBM-uZw.js                       0.49 kB
+node_modules/.nitro/vite/services/ssr/assets/textarea-B35_IFfn.js                      0.67 kB
+node_modules/.nitro/vite/services/ssr/assets/badge-BU5JXVj5.js                         0.99 kB
+node_modules/.nitro/vite/services/ssr/assets/engagement-hhHs_lj7.js                    1.33 kB
+node_modules/.nitro/vite/services/ssr/assets/card-C4Twym5p.js                          1.65 kB
+node_modules/.nitro/vite/services/ssr/assets/queries-CZwzetKR.js                       1.68 kB
+node_modules/.nitro/vite/services/ssr/assets/updates-Bt_cG5Th.js                       1.77 kB
+node_modules/.nitro/vite/services/ssr/assets/category-badge-CFMOkAWo.js                2.44 kB
+node_modules/.nitro/vite/services/ssr/assets/week-CHWsJaEc.js                          2.94 kB
+node_modules/.nitro/vite/services/ssr/assets/today-BzgpGgC1.js                         2.94 kB
+node_modules/.nitro/vite/services/ssr/assets/month-arTYmjhl.js                         2.94 kB
+node_modules/.nitro/vite/services/ssr/assets/updates-di8TRLjK.js                       3.46 kB
+node_modules/.nitro/vite/services/ssr/assets/date._date-C0JkyCZF.js                    3.87 kB
+node_modules/.nitro/vite/services/ssr/assets/bookmarks-PD1f6VU-.js                     4.05 kB
+node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-TB9eNUVq.js    4.80 kB
+node_modules/.nitro/vite/services/ssr/assets/update-list-Bym9YhHJ.js                   5.12 kB
+node_modules/.nitro/vite/services/ssr/assets/engagement-BeDaIfQm.js                    8.26 kB
+node_modules/.nitro/vite/services/ssr/assets/select-DZh9AAnX.js                        9.31 kB
+node_modules/.nitro/vite/services/ssr/assets/dashboard-CYtiCYCB.js                     9.67 kB
+node_modules/.nitro/vite/services/ssr/assets/queries-DdXpq4SB.js                      10.63 kB
+node_modules/.nitro/vite/services/ssr/assets/index-D9RwP6cK.js                        12.16 kB
+node_modules/.nitro/vite/services/ssr/assets/create-update-BIjpomWX.js                12.39 kB
+node_modules/.nitro/vite/services/ssr/assets/edit-update._id-CBK_r0vW.js              13.78 kB
+node_modules/.nitro/vite/services/ssr/assets/update._slug-CBvRd1TX.js                 18.87 kB
+node_modules/.nitro/vite/services/ssr/assets/router-Do4iT8Hh.js                       51.41 kB
+node_modules/.nitro/vite/services/ssr/index.js                                       321.48 kB
+✓ built in 840ms
+
+[nitro] ◐ Building [Nitro] (preset: node-server, compatibility: 2026-03-08)
+[nitro] ✔ Generated public .output/public
+vite v7.3.1 building nitro environment for production...
+transforming...
+src/components/ui/toaster.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/toaster.tsx (1:0): Module level directives cause errors when bundled, "use client" in "src/components/ui/toaster.tsx" was ignored.
+src/components/ui/form.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/form.tsx (1:0): Module level directives cause errors when bundled, "use client" in "src/components/ui/form.tsx" was ignored.
+src/components/ui/separator.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/separator.tsx (1:0): Module level directives cause errors when bundled, "use client" in "src/components/ui/separator.tsx" was ignored.
+src/components/ui/toast.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/toast.tsx (1:0): Module level directives cause errors when bundled, "use client" in "src/components/ui/toast.tsx" was ignored.
+node_modules/@vercel/analytics/dist/react/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@vercel/analytics/dist/react/index.mjs" was ignored.
+node_modules/@tanstack/react-query/build/modern/useQueries.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useQueries.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useQuery.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/HydrationBoundary.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/HydrationBoundary.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useIsFetching.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useIsFetching.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useMutationState.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useMutationState.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useMutation.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useMutation.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useInfiniteQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useInfiniteQuery.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useSuspenseQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useSuspenseQuery.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useSuspenseInfiniteQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useSuspenseInfiniteQuery.js" was ignored.
+node_modules/@tanstack/react-query/build/modern/useSuspenseQueries.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useSuspenseQueries.js" was ignored.
+src/components/ui/dropdown-menu.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/dropdown-menu.tsx (1:0): Module level directives cause errors when bundled, "use client" in "src/components/ui/dropdown-menu.tsx" was ignored.
+node_modules/@radix-ui/react-switch/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-switch/dist/index.mjs" was ignored.
+node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js" was ignored.
+node_modules/@radix-ui/react-select/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-select/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-label/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-label/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-toast/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-toast/dist/index.mjs" was ignored.
+node_modules/@tanstack/react-query/build/modern/useBaseQuery.js (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@tanstack/react-query/build/modern/useBaseQuery.js" was ignored.
+node_modules/@radix-ui/react-avatar/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-avatar/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-collection/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-collection/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-focus-guards/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-focus-guards/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-focus-scope/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-focus-scope/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-popper/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-popper/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-portal/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-portal/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-presence/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-presence/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-menu/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-menu/dist/index.mjs" was ignored.
+node_modules/@radix-ui/react-roving-focus/dist/index.mjs (1:0): Module level directives cause errors when bundled, "use client" in "node_modules/@radix-ui/react-roving-focus/dist/index.mjs" was ignored.
+✓ 2594 modules transformed.
+rendering chunks...
+.output/server/_chunks/_libs/@tanstack/store.mjs                           0.00 kB
+.output/server/_chunks/_libs/@tanstack/react-store.mjs                     0.00 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-effect-event.mjs          0.00 kB
+.output/server/_libs/detect-node-es.mjs                                    0.00 kB
+.output/server/_chunks/_libs/@tanstack/react-start.mjs                     0.06 kB
+.output/server/_libs/tiny-warning.mjs                                      0.07 kB
+.output/server/_chunks/_libs/@radix-ui/number.mjs                          0.11 kB
+.output/server/_libs/get-nonce.mjs                                         0.16 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-layout-effect.mjs         0.17 kB
+.output/server/_libs/tiny-invariant.mjs                                    0.18 kB
+.output/server/_chunks/_libs/@radix-ui/react-direction.mjs                 0.28 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-is-hydrated.mjs           0.28 kB
+.output/server/_chunks/_libs/@tanstack/start-fn-stubs.mjs                  0.31 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-callback-ref.mjs          0.34 kB
+.output/server/_chunks/_libs/@radix-ui/primitive.mjs                       0.35 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-previous.mjs              0.39 kB
+.output/server/_chunks/_libs/@radix-ui/react-id.mjs                        0.50 kB
+.output/server/_libs/clsx.mjs                                              0.51 kB
+.output/server/_chunks/_libs/@tanstack/react-start-server.mjs              0.62 kB
+.output/server/_chunks/_libs/@radix-ui/react-label.mjs                     0.68 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-escape-keydown.mjs        0.68 kB
+.output/server/_chunks/_libs/@radix-ui/react-arrow.mjs                     0.70 kB
+.output/server/_chunks/_libs/@tanstack/start-storage-context.mjs           0.78 kB
+.output/server/_chunks/_libs/@radix-ui/react-portal.mjs                    0.81 kB
+.output/server/_chunks/_libs/@radix-ui/react-visually-hidden.mjs           0.86 kB
+.output/server/_chunks/_libs/@radix-ui/react-focus-guards.mjs              0.94 kB
+.output/server/_chunks/_libs/@radix-ui/react-compose-refs.mjs              0.96 kB
+.output/server/_chunks/_libs/@radix-ui/react-separator.mjs                 1.06 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-size.mjs                  1.25 kB
+.output/server/_libs/tslib.mjs                                             1.34 kB
+.output/server/_libs/seroval-plugins.mjs                                   1.47 kB
+.output/server/_libs/cookie-es.mjs                                         1.57 kB
+.output/server/_libs/defu.mjs                                              1.62 kB
+.output/server/_libs/react-style-singleton.mjs                             1.69 kB
+.output/server/_libs/use-callback-ref.mjs                                  1.76 kB
+.output/server/_libs/class-variance-authority.mjs                          2.14 kB
+.output/server/_chunks/_libs/@radix-ui/react-use-controllable-state.mjs    2.29 kB
+.output/server/_libs/isbot.mjs                                             2.41 kB
+.output/server/_libs/use-sync-external-store.mjs                           2.50 kB
+.output/server/_libs/use-sidecar.mjs                                       2.68 kB
+.output/server/_chunks/_libs/@radix-ui/react-collection.mjs                3.20 kB
+.output/server/_chunks/_libs/@vercel/analytics.mjs                         3.47 kB
+.output/server/_libs/lucide-react.mjs                                      3.78 kB
+.output/server/_libs/react-remove-scroll-bar.mjs                           3.97 kB
+.output/server/_libs/nanostores.mjs                                        4.00 kB
+.output/server/_libs/aria-hidden.mjs                                       4.06 kB
+.output/server/_chunks/_libs/@hookform/resolvers.mjs                       4.17 kB
+.output/server/_chunks/_libs/@radix-ui/react-avatar.mjs                    4.41 kB
+.output/server/_chunks/_libs/@radix-ui/react-presence.mjs                  4.84 kB
+.output/server/_chunks/_libs/@radix-ui/react-switch.mjs                    4.84 kB
+.output/server/_chunks/_libs/@tanstack/history.mjs                         6.16 kB
+.output/server/_libs/rou3.mjs                                              6.47 kB
+.output/server/_chunks/_libs/@tanstack/react-query.mjs                     6.92 kB
+.output/server/_libs/scheduler.mjs                                         7.20 kB
+.output/server/_chunks/_libs/@better-auth/utils.mjs                        7.47 kB
+.output/server/_libs/react-swipeable.mjs                                   7.84 kB
+.output/server/_chunks/_libs/@radix-ui/react-focus-scope.mjs               8.04 kB
+.output/server/_libs/srvx.mjs                                              8.38 kB
+.output/server/_chunks/_libs/@floating-ui/react-dom.mjs                    8.41 kB
+.output/server/_chunks/_libs/@radix-ui/react-dismissable-layer.mjs         9.02 kB
+.output/server/_libs/h3-v2.mjs                                             9.41 kB
+.output/server/_chunks/_libs/@radix-ui/react-roving-focus.mjs              9.43 kB
+.output/server/_chunks/_libs/@floating-ui/utils.mjs                        9.47 kB
+.output/server/_chunks/_libs/@better-auth/memory-adapter.mjs               9.62 kB
+.output/server/index.mjs                                                  10.27 kB
+.output/server/_chunks/_libs/@radix-ui/react-primitive.mjs                10.79 kB
+.output/server/_chunks/_libs/@tanstack/start-client-core.mjs              10.96 kB
+.output/server/_chunks/_libs/@radix-ui/react-popper.mjs                   11.60 kB
+.output/server/_chunks/_libs/@radix-ui/react-dropdown-menu.mjs            11.71 kB
+.output/server/_chunks/_libs/react.mjs                                    12.59 kB
+.output/server/_libs/react-remove-scroll.mjs                              13.41 kB
+.output/server/_chunks/_libs/@better-auth/drizzle-adapter.mjs             17.27 kB
+.output/server/_chunks/_libs/@better-auth/telemetry.mjs                   18.49 kB
+.output/server/_chunks/_libs/@better-fetch/fetch.mjs                      19.04 kB
+.output/server/_chunks/_libs/@noble/hashes.mjs                            21.00 kB
+.output/server/_chunks/_libs/@floating-ui/dom.mjs                         21.26 kB
+.output/server/_chunks/_libs/@radix-ui/react-context.mjs                  22.76 kB
+.output/server/_chunks/_libs/@floating-ui/core.mjs                        24.05 kB
+.output/server/_chunks/_libs/@noble/ciphers.mjs                           25.88 kB
+.output/server/_chunks/_libs/@radix-ui/react-toast.mjs                    26.95 kB
+.output/server/_chunks/_libs/@better-auth/kysely-adapter.mjs              30.30 kB
+.output/server/_libs/better-call.mjs                                      32.72 kB
+.output/server/_chunks/_libs/@tanstack/start-server-core.mjs              33.95 kB
+.output/server/_chunks/_libs/@radix-ui/react-menu.mjs                     34.36 kB
+.output/server/_chunks/_libs/@tanstack/react-router.mjs                   45.37 kB
+.output/server/_libs/seroval.mjs                                          48.03 kB
+.output/server/_chunks/_libs/@radix-ui/react-select.mjs                   50.45 kB
+.output/server/_chunks/_libs/@radix-ui/react-slot.mjs                     50.95 kB
+.output/server/_libs/postgres.mjs                                         70.37 kB
+.output/server/_libs/tailwind-merge.mjs                                   70.55 kB
+.output/server/_libs/react-hook-form.mjs                                  71.18 kB
+.output/server/_chunks/_libs/@tanstack/query-core.mjs                     74.03 kB
+.output/server/_libs/jose.mjs                                             96.42 kB
+.output/server/_chunks/router.mjs                                        131.25 kB
+.output/server/_libs/zod.mjs                                             138.45 kB
+.output/server/_chunks/_libs/@tanstack/router-core.mjs                   158.20 kB
+.output/server/_chunks/_libs/@better-auth/core.mjs                       166.18 kB
+.output/server/_libs/drizzle-orm.mjs                                     201.58 kB
+.output/server/_libs/better-auth.mjs                                     281.04 kB
+.output/server/_chunks/_libs/react-dom.mjs                               320.73 kB
+.output/server/_libs/kysely.mjs                                          437.25 kB
+✓ built in 5.43s
+ℹ Generated .output/nitro.json
+
+[nitro] ✔ You can preview this build using node .output/server/index.mjs
