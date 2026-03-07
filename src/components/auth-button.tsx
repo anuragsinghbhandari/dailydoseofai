@@ -7,9 +7,20 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { useState, useEffect } from "react";
 
 export function AuthButton() {
+    const [mounted, setMounted] = useState(false);
     const { data: session, isPending } = useSession();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Don't render auth UI during SSR - prevents HTTPError from useSession fetch
+    if (!mounted) {
+        return <Button variant="outline" size="sm" disabled>...</Button>;
+    }
 
     if (isPending) {
         return <Button variant="outline" size="sm" disabled>...</Button>;

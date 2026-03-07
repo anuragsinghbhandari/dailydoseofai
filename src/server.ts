@@ -30,8 +30,30 @@ export default {
                         has_secret: !!process.env.BETTER_AUTH_SECRET,
                         has_google: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
                         app_url: process.env.VITE_APP_URL,
+                        server_url: process.env.SERVER_URL,
+                        vercel_url: process.env.VERCEL_URL,
                     }
                 }), { headers: { 'Content-Type': 'application/json' } })
+            }
+
+            // Debug: render homepage and return full error
+            if (url.pathname === '/api/debug-ssr') {
+                const testUrl = new URL('/', url.origin)
+                const testReq = new Request(testUrl.toString(), { headers: request.headers })
+                try {
+                    const response = await handler(testReq)
+                    const body = await response.text()
+                    return new Response(JSON.stringify({
+                        status: response.status,
+                        bodyPreview: body.slice(0, 2000)
+                    }), { headers: { 'Content-Type': 'application/json' } })
+                } catch (err: any) {
+                    return new Response(JSON.stringify({
+                        thrown: true,
+                        message: err.message,
+                        stack: err.stack?.slice(0, 1000)
+                    }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+                }
             }
 
             if (url.pathname.startsWith('/api/auth')) {
@@ -41,7 +63,7 @@ export default {
             const response = await handler(request)
             if (response.status === 500) {
                 const body = await response.clone().text()
-                console.error(`🚩 SSR Handler returned 500 for ${url.pathname}. Body: ${body.slice(0, 500)}`)
+                console.error(`🚩 SSR Handler returned 500 for ${url.pathname}. Body: ${body.slice(0, 1000)}`)
             }
             return response
         } catch (error: any) {
