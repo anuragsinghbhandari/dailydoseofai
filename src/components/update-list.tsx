@@ -1,6 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Update } from "@/server/schema";
 import { UpdateCard } from "./update-card";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface UpdateListProps {
   updates?: Update[];
@@ -8,6 +10,8 @@ interface UpdateListProps {
 }
 
 export function UpdateList({ updates, isLoading }: UpdateListProps) {
+  const [displayCount, setDisplayCount] = useState(20);
+
   if (isLoading) {
     return (
       <div className="grid gap-6 md:grid-cols-2">
@@ -28,11 +32,29 @@ export function UpdateList({ updates, isLoading }: UpdateListProps) {
     );
   }
 
+  const visibleUpdates = updates.slice(0, displayCount);
+  const hasMore = displayCount < updates.length;
+
   return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-      {updates.map((update) => (
-        <UpdateCard key={update.id} update={update} />
-      ))}
+    <div className="space-y-8">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+        {visibleUpdates.map((update) => (
+          <UpdateCard key={update.id} update={update} />
+        ))}
+      </div>
+
+      {hasMore && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setDisplayCount((prev) => prev + 20)}
+            className="rounded-xl px-8"
+          >
+            Load More News
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

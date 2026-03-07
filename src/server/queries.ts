@@ -38,7 +38,7 @@ async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {
       )
     )
     .orderBy(desc(updates.impact_score), desc(updates.created_at))
-    .limit(20);
+    .limit(300);
 
   return rows as Update[];
 }
