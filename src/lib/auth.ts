@@ -1,9 +1,9 @@
 import { createAuthClient } from "better-auth/react";
 
 const getBaseURL = () => {
-    // Priority 1: VITE_APP_URL from env
-    if (process.env.VITE_APP_URL) return process.env.VITE_APP_URL;
-    // Priority 2: VERCEL_URL fallback
+    // SERVER_URL works on both client and server (not VITE_ prefixed, so available in process.env on server)
+    if (process.env.SERVER_URL) return process.env.SERVER_URL;
+    // VERCEL_URL is auto-set by Vercel for the deployment URL (no https prefix)
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
     // Localhost fallback
     return "http://localhost:3000";
