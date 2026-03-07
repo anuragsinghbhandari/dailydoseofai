@@ -6,7 +6,7 @@ const getBaseURL = () => {
     // VERCEL_URL is auto-set by Vercel for the deployment URL (no https prefix)
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
     // Localhost fallback
-    return "http://localhost:3000";
+    return "https://www.dailydoseofai.tech";
 };
 
 export const authClient = createAuthClient({
