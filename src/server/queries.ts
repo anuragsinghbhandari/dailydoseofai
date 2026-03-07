@@ -64,7 +64,7 @@ async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {
     })) as Update[];
   } catch (error: any) {
     console.error('❌ getTopUpdatesBetween failed:', error);
-    throw error;
+    return []; // Return empty instead of crashing SSR
   }
 }
 
@@ -75,7 +75,7 @@ export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async (
     return await getTopUpdatesBetween(start, end);
   } catch (error: any) {
     console.error('❌ getTodayUpdates failed:', error);
-    throw error;
+    return [];
   }
 });
 
@@ -88,7 +88,7 @@ export const getWeekUpdates = createServerFn({ method: "GET" }).handler(async ()
     return await getTopUpdatesBetween(start, end);
   } catch (error: any) {
     console.error('❌ getWeekUpdates failed:', error);
-    throw error;
+    return [];
   }
 });
 
@@ -99,7 +99,7 @@ export const getMonthUpdates = createServerFn({ method: "GET" }).handler(async (
     return await getTopUpdatesBetween(start, end);
   } catch (error: any) {
     console.error('❌ getMonthUpdates failed:', error);
-    throw error;
+    return [];
   }
 });
 
@@ -130,7 +130,7 @@ export const getWeekUpdatesSummary = createServerFn({ method: "GET" }).handler(a
     return await getUpdatesSummaryBetween(start, end);
   } catch (error: any) {
     console.error('❌ getWeekUpdatesSummary failed:', error);
-    throw error;
+    return [];
   }
 });
 
@@ -141,7 +141,7 @@ export const getMonthUpdatesSummary = createServerFn({ method: "GET" }).handler(
     return await getUpdatesSummaryBetween(start, end);
   } catch (error: any) {
     console.error('❌ getMonthUpdatesSummary failed:', error);
-    throw error;
+    return [];
   }
 });
 

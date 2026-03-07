@@ -77,7 +77,7 @@ function EditUpdatePage() {
   ) as (NewUpdate & { id: string }) | undefined;
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     values: existing
       ? {
         title: existing.title,
@@ -161,7 +161,7 @@ function EditUpdatePage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
           <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
             <div className="space-y-6">
               <Card>
