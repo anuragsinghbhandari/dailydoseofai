@@ -8,7 +8,10 @@ if (!process.env.BETTER_AUTH_SECRET) {
 }
 
 const getBaseURL = () => {
-    if (process.env.VITE_APP_URL) return process.env.VITE_APP_URL;
+    // SERVER_URL is a plain env var (not VITE_ prefixed), so it's available at server runtime
+    if (process.env.SERVER_URL) return process.env.SERVER_URL;
+    // VITE_APP_URL is only available at build time (injected by Vite), NOT at server runtime - do not use
+    // VERCEL_URL is the deployment URL set by Vercel (no https:// prefix)
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
     return "http://localhost:3000";
 };
@@ -27,3 +30,4 @@ export const auth = betterAuth({
         }
     }
 });
+
