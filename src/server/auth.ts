@@ -23,6 +23,11 @@ export const auth = betterAuth({
     }),
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: getBaseURL(),
+    // Trust both www and non-www variants so origin checks don't fail
+    trustedOrigins: [
+        "https://www.dailydoseofai.tech",
+        "https://dailydoseofai.tech",
+    ],
     socialProviders: {
         google: {
             clientId: process.env.GOOGLE_CLIENT_ID as string,

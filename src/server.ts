@@ -29,7 +29,6 @@ export default {
                         has_db: !!process.env.DATABASE_URL,
                         has_secret: !!process.env.BETTER_AUTH_SECRET,
                         has_google: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
-                        app_url: process.env.VITE_APP_URL,
                         server_url: process.env.SERVER_URL,
                         vercel_url: process.env.VERCEL_URL,
                     }
