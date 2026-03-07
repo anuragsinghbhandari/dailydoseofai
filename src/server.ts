@@ -27,7 +27,8 @@ export default {
                     env: {
                         has_db: !!process.env.DATABASE_URL,
                         has_secret: !!process.env.BETTER_AUTH_SECRET,
-                        app_url: process.env.VITE_APP_URL
+                        has_google: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
+                        app_url: process.env.VITE_APP_URL,
                     }
                 }), { headers: { 'Content-Type': 'application/json' } })
             }
@@ -35,7 +36,12 @@ export default {
             if (url.pathname.startsWith('/api/auth')) {
                 return await auth.handler(request)
             }
-            return await handler(request)
+
+            const response = await handler(request)
+            if (response.status === 500) {
+                console.error(`🚩 SSR Handler returned 500 for ${url.pathname}`)
+            }
+            return response
         } catch (error: any) {
             console.error('🔥 CRITICAL SERVER ERROR:', error)
             return new Response(JSON.stringify({

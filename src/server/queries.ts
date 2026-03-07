@@ -29,33 +29,43 @@ function startOfCurrentMonth() {
 }
 
 async function getSession() {
-  const req = getRequest();
-  if (!req) return null;
-  return await auth.api.getSession({ headers: req.headers });
+  try {
+    const req = getRequest();
+    if (!req) return null;
+    return await auth.api.getSession({ headers: req.headers });
+  } catch (error: any) {
+    console.error('❌ getSession failed:', error);
+    return null;
+  }
 }
 
 async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {
-  const session = await getSession();
+  try {
+    const session = await getSession();
 
-  let queryBuilder: any = db.select({
-    update: updates,
-    ...(session ? { isSeen: sql<boolean>`EXISTS (SELECT 1 FROM user_views WHERE user_views.update_id = updates.id AND user_views.user_id = ${session.user.id})` } : {})
-  }).from(updates);
+    let queryBuilder: any = db.select({
+      update: updates,
+      ...(session ? { isSeen: sql<boolean>`EXISTS (SELECT 1 FROM user_views WHERE user_views.update_id = updates.id AND user_views.user_id = ${session.user.id})` } : {})
+    }).from(updates);
 
-  queryBuilder = queryBuilder.where(
-    and(
-      eq(updates.published, true),
-      gte(updates.created_at, from),
-      lte(updates.created_at, to)
-    )
-  ).orderBy(desc(updates.impact_score), desc(updates.created_at)).limit(300);
+    queryBuilder = queryBuilder.where(
+      and(
+        eq(updates.published, true),
+        gte(updates.created_at, from),
+        lte(updates.created_at, to)
+      )
+    ).orderBy(desc(updates.impact_score), desc(updates.created_at)).limit(300);
 
-  const rows = await queryBuilder;
+    const rows = await queryBuilder;
 
-  return rows.map((r: any) => ({
-    ...r.update,
-    isSeen: r.isSeen ?? false
-  })) as Update[];
+    return rows.map((r: any) => ({
+      ...r.update,
+      isSeen: r.isSeen ?? false
+    })) as Update[];
+  } catch (error: any) {
+    console.error('❌ getTopUpdatesBetween failed:', error);
+    throw error;
+  }
 }
 
 export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async () => {
