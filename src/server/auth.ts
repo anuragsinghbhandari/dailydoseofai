@@ -3,11 +3,16 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "./db";
 import * as schema from "./schema";
 
+if (!process.env.BETTER_AUTH_SECRET) {
+    console.warn("⚠️ BETTER_AUTH_SECRET is not set. Better Auth may fail in production.");
+}
+
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "pg",
         schema: schema,
     }),
+    secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.VITE_APP_URL || "http://localhost:3000",
     socialProviders: {
         google: {
