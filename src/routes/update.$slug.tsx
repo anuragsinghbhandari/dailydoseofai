@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getUpdateBySlug, getAdjacentUpdates } from "@/server/queries";
+import { getUpdateBySlug, getUpdatesByDate } from "@/server/queries";
 import { useSwipeable } from "react-swipeable";
 import {
   Card,
@@ -25,9 +25,22 @@ function UpdateDetailPage() {
 
   const queryClient = useQueryClient();
 
-  // Look up if this exact article already exists in the "Today" list cache 
+  // Look up if this exact article already exists in the "Today" list cache or any date cache
   const todayUpdates = queryClient.getQueryData(["updates", "today"]) as any[] | undefined;
-  const initialUpdateData = todayUpdates?.find(u => u.slug === slug);
+  let initialUpdateData = todayUpdates?.find(u => u.slug === slug);
+
+  if (!initialUpdateData) {
+    const dateQueries = queryClient.getQueriesData({ queryKey: ["updates", "date"] });
+    for (const [key, data] of dateQueries) {
+      if (Array.isArray(data)) {
+        const found = data.find(u => u.slug === slug);
+        if (found) {
+          initialUpdateData = found;
+          break;
+        }
+      }
+    }
+  }
 
   const query = useQuery({
     queryKey: ["update", slug],
@@ -35,28 +48,40 @@ function UpdateDetailPage() {
     initialData: initialUpdateData
   });
 
-  // 1. Try to find the adjacent articles in the React Query cache first
+  const dateObj = query.data ? new Date(query.data.created_at) : null;
+  let dateStr: string | undefined;
+  let isToday = false;
 
-  let prevCacheSlug = null;
-  let nextCacheSlug = null;
-
-  if (todayUpdates) {
-    const currentIndex = todayUpdates.findIndex((u) => u.slug === slug);
-    if (currentIndex !== -1) {
-      prevCacheSlug = todayUpdates[currentIndex - 1]?.slug || null;
-      nextCacheSlug = todayUpdates[currentIndex + 1]?.slug || null;
-    }
+  if (dateObj) {
+    dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    isToday = dateStr === todayStr;
   }
 
-  // 2. Fallback to API if not in cache (e.g. direct link visit)
-  const adjacentQuery = useQuery({
-    queryKey: ["adjacent", slug],
-    queryFn: () => (getAdjacentUpdates as any)({ data: { slug } }),
-    enabled: !todayUpdates
+  const dayUpdatesQuery = useQuery({
+    queryKey: ["updates", "date", dateStr],
+    queryFn: () => (getUpdatesByDate as any)({ data: dateStr }),
+    enabled: !!dateStr && !isToday
   });
 
-  const prevSlug = prevCacheSlug || adjacentQuery.data?.prevSlug || null;
-  const nextSlug = nextCacheSlug || adjacentQuery.data?.nextSlug || null;
+  let sourceList: any[] = [];
+  if (isToday && todayUpdates) {
+    sourceList = todayUpdates;
+  } else if (dayUpdatesQuery.data) {
+    sourceList = dayUpdatesQuery.data as any[];
+  }
+
+  let prevSlug = null;
+  let nextSlug = null;
+
+  if (sourceList.length > 0) {
+    const currentIndex = sourceList.findIndex((u) => u.slug === slug);
+    if (currentIndex !== -1) {
+      prevSlug = sourceList[currentIndex - 1]?.slug || null;
+      nextSlug = sourceList[currentIndex + 1]?.slug || null;
+    }
+  }
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {

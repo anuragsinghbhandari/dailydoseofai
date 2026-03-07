@@ -28,3 +28,4 @@ lerna-debug.log*
 
 # TanStack Router generated file (usually gitignored because it's auto-generated on dev/build)
 src/routeTree.gen.ts
+notes.md
