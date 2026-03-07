@@ -5,7 +5,7 @@ export const Route = createFileRoute("/admin/_layout")({
     beforeLoad: async () => {
         // Simple check on the client
         const { data: session } = await authClient.getSession();
-        if (!session || session.user.role !== "admin") {
+        if (!session || (session.user as any).role !== "admin") {
             throw redirect({
                 to: "/",
             });

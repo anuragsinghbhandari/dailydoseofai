@@ -1,3 +1,6 @@
+/**
+ * This file is a client component.
+ */
 "use client"
 
 import { useToast } from "@/hooks/use-toast"

@@ -9,6 +9,7 @@ export default {
     fetch: async (request: Request) => {
         try {
             const url = new URL(request.url)
+            console.log(`🌐 [${request.method}] ${url.pathname} | Host: ${request.headers.get('host')}`)
 
             // Heartbeat for debugging
             if (url.pathname === '/api/heartbeat') {
@@ -39,7 +40,8 @@ export default {
 
             const response = await handler(request)
             if (response.status === 500) {
-                console.error(`🚩 SSR Handler returned 500 for ${url.pathname}`)
+                const body = await response.clone().text()
+                console.error(`🚩 SSR Handler returned 500 for ${url.pathname}. Body: ${body.slice(0, 500)}`)
             }
             return response
         } catch (error: any) {

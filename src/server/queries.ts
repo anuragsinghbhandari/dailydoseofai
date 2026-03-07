@@ -69,23 +69,38 @@ async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {
 }
 
 export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async () => {
-  const start = startOfToday();
-  const end = new Date();
-  return getTopUpdatesBetween(start, end);
+  try {
+    const start = startOfToday();
+    const end = new Date();
+    return await getTopUpdatesBetween(start, end);
+  } catch (error: any) {
+    console.error('❌ getTodayUpdates failed:', error);
+    throw error;
+  }
 });
 
 export const getWeekUpdates = createServerFn({ method: "GET" }).handler(async () => {
-  const start = startOfCurrentWeek();
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return getTopUpdatesBetween(start, end);
+  try {
+    const start = startOfCurrentWeek();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return await getTopUpdatesBetween(start, end);
+  } catch (error: any) {
+    console.error('❌ getWeekUpdates failed:', error);
+    throw error;
+  }
 });
 
 export const getMonthUpdates = createServerFn({ method: "GET" }).handler(async () => {
-  const start = startOfCurrentMonth();
-  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
-  return getTopUpdatesBetween(start, end);
+  try {
+    const start = startOfCurrentMonth();
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
+    return await getTopUpdatesBetween(start, end);
+  } catch (error: any) {
+    console.error('❌ getMonthUpdates failed:', error);
+    throw error;
+  }
 });
 
 async function getUpdatesSummaryBetween(from: Date, to: Date) {
@@ -107,17 +122,27 @@ async function getUpdatesSummaryBetween(from: Date, to: Date) {
 }
 
 export const getWeekUpdatesSummary = createServerFn({ method: "GET" }).handler(async () => {
-  const start = startOfCurrentWeek();
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return getUpdatesSummaryBetween(start, end);
+  try {
+    const start = startOfCurrentWeek();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return await getUpdatesSummaryBetween(start, end);
+  } catch (error: any) {
+    console.error('❌ getWeekUpdatesSummary failed:', error);
+    throw error;
+  }
 });
 
 export const getMonthUpdatesSummary = createServerFn({ method: "GET" }).handler(async () => {
-  const start = startOfCurrentMonth();
-  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
-  return getUpdatesSummaryBetween(start, end);
+  try {
+    const start = startOfCurrentMonth();
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
+    return await getUpdatesSummaryBetween(start, end);
+  } catch (error: any) {
+    console.error('❌ getMonthUpdatesSummary failed:', error);
+    throw error;
+  }
 });
 
 export const getUpdateBySlug = createServerFn({ method: "GET" })
