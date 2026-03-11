@@ -4,7 +4,8 @@ import {
   uuid,
   timestamp,
   integer,
-  boolean
+  boolean,
+  index
 } from "drizzle-orm/pg-core";
 
 export const updates = pgTable("updates", {
@@ -93,6 +94,10 @@ export const likes = pgTable("likes", {
   update_id: uuid("update_id")
     .notNull()
     .references(() => updates.id)
+}, (table) => {
+  return {
+    userIdIdx: index("like_user_idx").on(table.user_id)
+  };
 });
 
 export const comments = pgTable("comments", {
@@ -120,6 +125,10 @@ export const bookmarks = pgTable("bookmarks", {
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow()
+}, (table) => {
+  return {
+    userIdIdx: index("bookmark_user_idx").on(table.user_id)
+  };
 });
 
 export const user_views = pgTable("user_views", {
