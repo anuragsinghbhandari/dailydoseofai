@@ -175,9 +175,9 @@ export const getUpdatesByDate = createServerFn({ method: "GET" })
 
 export const getAdjacentUpdates = createServerFn({ method: "GET" })
   .handler(async (ctx: any) => {
-    const { slug } = ctx.data as { slug: string, category: string, created_at: string };
+    const { slug } = ctx.data as { slug: string };
 
-    // Fetch the current update to get its exact timestamp and ID for reliable tie-breaking
+    // Fetch the current update to get its exact timestamp to find the day it belongs to
     const currentRows = await db
       .select({ id: updates.id, created_at: updates.created_at })
       .from(updates)
@@ -189,52 +189,43 @@ export const getAdjacentUpdates = createServerFn({ method: "GET" })
     }
     const currentUpdate = currentRows[0];
 
-    // Older article (previous)
-    // We want the newest article that is older than the current one.
-    // If timestamps are exactly equal, we break the tie using ID.
-    const prevRows = await db
+    // Get start and end of that specific day
+    const dayStart = new Date(currentUpdate.created_at);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Fetch all updates for that day, sorted exactly like the homepage (impact_score DESC, created_at DESC)
+    const dayUpdates = await db
       .select({ slug: updates.slug })
       .from(updates)
       .where(
         and(
           eq(updates.published, true),
-          or(
-            lt(updates.created_at, currentUpdate.created_at),
-            and(
-              eq(updates.created_at, currentUpdate.created_at),
-              lt(updates.id, currentUpdate.id)
-            )
-          )
+          gte(updates.created_at, dayStart),
+          lte(updates.created_at, dayEnd)
         )
       )
-      .orderBy(desc(updates.created_at), desc(updates.id))
-      .limit(1);
+      .orderBy(desc(updates.impact_score), desc(updates.created_at));
 
-    // Newer article (next)
-    // We want the oldest article that is newer than the current one.
-    // ASC ordering.
-    const nextRows = await db
-      .select({ slug: updates.slug })
-      .from(updates)
-      .where(
-        and(
-          eq(updates.published, true),
-          or(
-            gt(updates.created_at, currentUpdate.created_at),
-            and(
-              eq(updates.created_at, currentUpdate.created_at),
-              gt(updates.id, currentUpdate.id)
-            )
-          )
-        )
-      )
-      .orderBy(updates.created_at, updates.id) // ASC to get the immediate next one
-      .limit(1);
+    const currentIndex = dayUpdates.findIndex(u => u.slug === slug);
 
-    return {
-      prevSlug: prevRows[0]?.slug ?? null,
-      nextSlug: nextRows[0]?.slug ?? null,
-    };
+    // In our UI, "Previous Article" means going left (which historically meant "newer" or "higher in the list")
+    // and "Next Article" means going right (which meant "older" or "lower in the list").
+    // Let's preserve the array order:
+    // element at index - 1 is "Higher in the feed" (Previous)
+    // element at index + 1 is "Lower in the feed" (Next)
+
+    let prevSlug = null;
+    let nextSlug = null;
+
+    if (currentIndex !== -1) {
+      prevSlug = dayUpdates[currentIndex - 1]?.slug || null;
+      nextSlug = dayUpdates[currentIndex + 1]?.slug || null;
+    }
+
+    return { prevSlug, nextSlug };
   });
 
 export const getAllUpdates = createServerFn({ method: "GET" }).handler(async () => {

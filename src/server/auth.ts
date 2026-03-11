@@ -21,6 +21,15 @@ export const auth = betterAuth({
         provider: "pg",
         schema: schema,
     }),
+    user: {
+        additionalFields: {
+            role: {
+                type: "string",
+                required: false,
+                defaultValue: "user"
+            }
+        }
+    },
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: getBaseURL(),
     // Trust both www and non-www variants so origin checks don't fail

@@ -4,13 +4,20 @@ import { getMustReads } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
 
 export const Route = createFileRoute("/must-read")({
-    component: MustReadPage
+    component: MustReadPage,
+    loader: async () => {
+        const mustReads = await getMustReads();
+        return { mustReads };
+    }
 });
 
 function MustReadPage() {
+    const loaderData = Route.useLoaderData();
+
     const query = useQuery({
         queryKey: ["updates", "must-read"],
-        queryFn: () => getMustReads()
+        queryFn: () => getMustReads(),
+        initialData: loaderData.mustReads
     });
 
     return (

@@ -4,13 +4,20 @@ import { getTodayUpdates } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
 
 export const Route = createFileRoute("/today")({
-  component: TodayPage
+  component: TodayPage,
+  loader: async () => {
+    const today = await getTodayUpdates();
+    return { today };
+  }
 });
 
 function TodayPage() {
+  const loaderData = Route.useLoaderData();
+
   const query = useQuery({
     queryKey: ["updates", "today"],
-    queryFn: () => getTodayUpdates()
+    queryFn: () => getTodayUpdates(),
+    initialData: loaderData.today
   });
 
   return (

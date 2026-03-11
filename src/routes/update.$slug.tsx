@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { getUpdateBySlug, getUpdatesByDate } from "@/server/queries";
+import { getUpdateBySlug, getAdjacentUpdates } from "@/server/queries";
 import { useSwipeable } from "react-swipeable";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
   CardHeader,
@@ -20,18 +22,27 @@ import { CommentsSection } from "@/components/comments-section";
 import { recordView } from "@/server/engagement";
 
 export const Route = createFileRoute("/update/$slug")({
-  component: UpdateDetailPage
+  component: UpdateDetailPage,
+  loader: async ({ params }) => {
+    const [update, adjacent] = await Promise.all([
+      (getUpdateBySlug as any)({ data: params.slug }),
+      (getAdjacentUpdates as any)({ data: { slug: params.slug } })
+    ]);
+    return { update, adjacent };
+  }
 });
 
 function UpdateDetailPage() {
   const { slug } = Route.useParams();
+  const loaderData = Route.useLoaderData();
   const navigate = useNavigate();
+  const [direction, setDirection] = useState(1);
 
   const queryClient = useQueryClient();
 
   // Look up if this exact article already exists in the "Today" list cache or any date cache
   const todayUpdates = queryClient.getQueryData(["updates", "today"]) as any[] | undefined;
-  let initialUpdateData = todayUpdates?.find(u => u.slug === slug);
+  let initialUpdateData = loaderData.update || todayUpdates?.find(u => u.slug === slug);
 
   if (!initialUpdateData) {
     const dateQueries = queryClient.getQueriesData({ queryKey: ["updates", "date"] });
@@ -52,41 +63,21 @@ function UpdateDetailPage() {
     initialData: initialUpdateData
   });
 
-  const dateObj = query.data ? new Date(query.data.created_at) : null;
-  let dateStr: string | undefined;
-
-  if (dateObj) {
-    dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-  }
-
-  const dayUpdatesQuery = useQuery({
-    queryKey: ["updates", "date", dateStr],
-    queryFn: () => (getUpdatesByDate as any)({ data: dateStr }),
-    enabled: !!dateStr
-  });
-
-  let sourceList: any[] = [];
-  if (dayUpdatesQuery.data) {
-    sourceList = dayUpdatesQuery.data as any[];
-  }
-
-  let prevSlug = null;
-  let nextSlug = null;
-
-  if (sourceList.length > 0) {
-    const currentIndex = sourceList.findIndex((u) => u.slug === slug);
-    if (currentIndex !== -1) {
-      prevSlug = sourceList[currentIndex - 1]?.slug || null;
-      nextSlug = sourceList[currentIndex + 1]?.slug || null;
-    }
-  }
+  const prevSlug = loaderData.adjacent?.prevSlug || null;
+  const nextSlug = loaderData.adjacent?.nextSlug || null;
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {
-      if (nextSlug) navigate({ to: `/update/${nextSlug}` });
+      if (nextSlug) {
+        setDirection(1);
+        navigate({ to: `/update/${nextSlug}` });
+      }
     },
     onSwipedRight: () => {
-      if (prevSlug) navigate({ to: `/update/${prevSlug}` });
+      if (prevSlug) {
+        setDirection(-1);
+        navigate({ to: `/update/${prevSlug}` });
+      }
     },
     trackMouse: false
   });
@@ -117,8 +108,14 @@ function UpdateDetailPage() {
     );
   }
 
+  const slideVariants: any = {
+    initial: (d: number) => ({ x: d > 0 ? 50 : -50, opacity: 0 }),
+    animate: { x: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 30 } },
+    exit: (d: number) => ({ x: d > 0 ? -50 : 50, opacity: 0, transition: { duration: 0.15 } })
+  };
+
   return (
-    <div {...handlers} className="container max-w-4xl py-12 relative">
+    <div {...handlers} className="container max-w-4xl py-12 relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
       <div className="mb-8">
         <Link
@@ -128,135 +125,150 @@ function UpdateDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to updates
         </Link>
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-          <div className="space-y-4 flex-1">
-            <div className="flex items-center gap-2">
-              <CategoryBadge category={update.category} />
-              <span className="text-sm font-medium text-muted-foreground">
-                {new Date(update.created_at).toLocaleDateString(undefined, {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric"
-                })}
-              </span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-extrabold tracking-tight leading-tight">
-              {update.title}
-            </h1>
-          </div>
-          <div className="flex-shrink-0 flex items-center gap-4">
-            <ImpactScore score={update.impact_score} />
-          </div>
-        </div>
       </div>
 
-      <div className="flex items-center justify-between w-full mb-8 gap-4">
-        <div className="flex-1">
-          {prevSlug ? (
-            <Link
-              to="/update/$slug"
-              params={{ slug: prevSlug }}
-              className="group relative flex flex-col items-start gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
-                <ChevronLeft className="h-3.5 w-3.5 mr-1" />
-                Previous Article
+      <AnimatePresence mode="wait" custom={direction}>
+        <motion.div
+          key={slug}
+          custom={direction}
+          variants={slideVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+        >
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+              <div className="space-y-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <CategoryBadge category={update.category} />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {new Date(update.created_at).toLocaleDateString(undefined, {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric"
+                    })}
+                  </span>
+                </div>
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-extrabold tracking-tight leading-tight">
+                  {update.title}
+                </h1>
               </div>
-              <span className="text-sm font-medium line-clamp-2">Swipe Right</span>
-            </Link>
-          ) : (
-            <div className="p-4 rounded-xl border border-dashed bg-muted/30 text-muted-foreground flex items-center justify-center text-sm h-full">
-              No previous article
+              <div className="flex-shrink-0 flex items-center gap-4">
+                <ImpactScore score={update.impact_score} />
+              </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="flex-1">
-          {nextSlug ? (
-            <Link
-              to="/update/$slug"
-              params={{ slug: nextSlug }}
-              className="group relative flex flex-col items-end gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden text-right"
-            >
-              <div className="absolute inset-0 bg-gradient-to-l from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
-                Next Article
-                <ChevronRight className="h-3.5 w-3.5 ml-1" />
-              </div>
-              <span className="text-sm font-medium line-clamp-2">Swipe Left</span>
-            </Link>
-          ) : (
-            <div className="p-4 rounded-xl border border-dashed bg-muted/30 text-muted-foreground flex items-center justify-center text-sm h-full">
-              No next article
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Separator className="my-8" />
-
-      <div className="grid gap-12 md:grid-cols-[1fr_250px]">
-        <article className="space-y-8 prose prose-neutral dark:prose-invert max-w-none">
-          <section>
-            <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
-              Summary
-            </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              {update.summary}
-            </p>
-          </section>
-
-
-
-          {update.content && !update.content.startsWith('Source: http') && (
-            <section>
-              <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
-                Deep Dive
-              </h2>
-              <div className="whitespace-pre-wrap leading-relaxed">
-                {update.content}
-              </div>
-            </section>
-          )}
-
-          <EngagementBar updateId={update.id} />
-          <CommentsSection updateId={update.id} />
-        </article>
-
-        <aside className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">About this update</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div>
-                <span className="font-semibold block mb-1">Category</span>
-                <span className="text-muted-foreground">{update.category}</span>
-              </div>
-              <div>
-                <span className="font-semibold block mb-1">Impact</span>
-                <span className="text-muted-foreground">{update.impact_score}/10</span>
-              </div>
-              {update.source_url && (
-                <div>
-                  <span className="font-semibold block mb-1">Source</span>
-                  <a
-                    href={update.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary hover:underline flex items-center gap-1"
-                  >
-                    Read original article
-                  </a>
+          <div className="flex items-center justify-between w-full mb-8 gap-4">
+            <div className="flex-1">
+              {prevSlug ? (
+                <Link
+                  to="/update/$slug"
+                  params={{ slug: prevSlug }}
+                  onClick={() => setDirection(-1)}
+                  className="group relative flex flex-col items-start gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
+                    <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+                    Previous Article
+                  </div>
+                  <span className="text-sm font-medium line-clamp-2">Swipe Right</span>
+                </Link>
+              ) : (
+                <div className="p-4 rounded-xl border border-dashed bg-muted/30 text-muted-foreground flex items-center justify-center text-sm h-full">
+                  No previous article
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-        </aside>
-      </div>
+            <div className="flex-1">
+              {nextSlug ? (
+                <Link
+                  to="/update/$slug"
+                  params={{ slug: nextSlug }}
+                  onClick={() => setDirection(1)}
+                  className="group relative flex flex-col items-end gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden text-right"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-l from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
+                    Next Article
+                    <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  </div>
+                  <span className="text-sm font-medium line-clamp-2">Swipe Left</span>
+                </Link>
+              ) : (
+                <div className="p-4 rounded-xl border border-dashed bg-muted/30 text-muted-foreground flex items-center justify-center text-sm h-full">
+                  No next article
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Separator className="my-8" />
+
+          <div className="grid gap-12 md:grid-cols-[1fr_250px]">
+            <article className="space-y-8 prose prose-neutral dark:prose-invert max-w-none">
+              <section>
+                <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
+                  Summary
+                </h2>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  {update.summary}
+                </p>
+              </section>
+
+
+
+              {update.content && !update.content.startsWith('Source: http') && (
+                <section>
+                  <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
+                    Deep Dive
+                  </h2>
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {update.content}
+                  </div>
+                </section>
+              )}
+
+              <EngagementBar updateId={update.id} />
+              <CommentsSection updateId={update.id} />
+            </article>
+
+            <aside className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">About this update</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div>
+                    <span className="font-semibold block mb-1">Category</span>
+                    <span className="text-muted-foreground">{update.category}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold block mb-1">Impact</span>
+                    <span className="text-muted-foreground">{update.impact_score}/10</span>
+                  </div>
+                  {update.source_url && (
+                    <div>
+                      <span className="font-semibold block mb-1">Source</span>
+                      <a
+                        href={update.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        Read original article
+                      </a>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+            </aside>
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
-

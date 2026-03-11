@@ -11,7 +11,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/")({
-  component: HomePage
+  component: HomePage,
+  loader: async () => {
+    const [today, week, month] = await Promise.all([
+      getTodayUpdates(),
+      getWeekUpdatesSummary(),
+      getMonthUpdatesSummary()
+    ]);
+    return { today, week, month };
+  }
 });
 
 function groupUpdatesByDate(updates: { id: string | number, created_at: Date | string }[]) {
@@ -80,19 +88,24 @@ function getCurrentMonthDays() {
 }
 
 function HomePage() {
+  const loaderData = Route.useLoaderData();
+
   const todayQuery = useQuery({
     queryKey: ["updates", "today"],
-    queryFn: () => getTodayUpdates()
+    queryFn: () => getTodayUpdates(),
+    initialData: loaderData.today
   });
 
   const weekQuery = useQuery({
     queryKey: ["updates", "week", "summary"],
-    queryFn: () => getWeekUpdatesSummary()
+    queryFn: () => getWeekUpdatesSummary(),
+    initialData: loaderData.week
   });
 
   const monthQuery = useQuery({
     queryKey: ["updates", "month", "summary"],
-    queryFn: () => getMonthUpdatesSummary()
+    queryFn: () => getMonthUpdatesSummary(),
+    initialData: loaderData.month
   });
 
   return (

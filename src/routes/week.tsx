@@ -4,13 +4,20 @@ import { getWeekUpdates } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
 
 export const Route = createFileRoute("/week")({
-  component: WeekPage
+  component: WeekPage,
+  loader: async () => {
+    const week = await getWeekUpdates();
+    return { week };
+  }
 });
 
 function WeekPage() {
+  const loaderData = Route.useLoaderData();
+
   const query = useQuery({
     queryKey: ["updates", "week"],
-    queryFn: () => getWeekUpdates()
+    queryFn: () => getWeekUpdates(),
+    initialData: loaderData.week
   });
 
   return (

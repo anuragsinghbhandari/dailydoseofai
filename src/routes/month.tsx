@@ -4,13 +4,20 @@ import { getMonthUpdates } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
 
 export const Route = createFileRoute("/month")({
-  component: MonthPage
+  component: MonthPage,
+  loader: async () => {
+    const month = await getMonthUpdates();
+    return { month };
+  }
 });
 
 function MonthPage() {
+  const loaderData = Route.useLoaderData();
+
   const query = useQuery({
     queryKey: ["updates", "month"],
-    queryFn: () => getMonthUpdates()
+    queryFn: () => getMonthUpdates(),
+    initialData: loaderData.month
   });
 
   return (

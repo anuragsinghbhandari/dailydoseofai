@@ -5,15 +5,21 @@ import { UpdateList } from "@/components/update-list";
 import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/date/$date")({
-  component: DatePage
+  component: DatePage,
+  loader: async ({ params }) => {
+    const dateUpdates = await (getUpdatesByDate as any)({ data: params.date });
+    return { dateUpdates };
+  }
 });
 
 function DatePage() {
   const { date } = Route.useParams();
+  const loaderData = Route.useLoaderData();
 
   const query = useQuery({
     queryKey: ["updates", "date", date],
-    queryFn: () => (getUpdatesByDate as any)({ data: date })
+    queryFn: () => (getUpdatesByDate as any)({ data: date }),
+    initialData: loaderData.dateUpdates
   });
 
   const dateObj = new Date(`${date}T12:00:00`); // use noon to avoid timezone shifts throwing off the day
