@@ -245,4 +245,13 @@ export const getAllUpdates = createServerFn({ method: "GET" }).handler(async () 
   return rows as Update[];
 });
 
+export const getMustReads = createServerFn({ method: "GET" }).handler(async () => {
+  const rows = await db
+    .select()
+    .from(updates)
+    .where(eq(updates.is_must_read, true))
+    .orderBy(desc(updates.created_at));
+  return rows as Update[];
+});
+
 

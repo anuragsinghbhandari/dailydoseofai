@@ -3,6 +3,22 @@ import type { Update } from "@/server/schema";
 import { UpdateCard } from "./update-card";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+
+const containerVariants: any = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants: any = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 interface UpdateListProps {
   updates?: Update[];
@@ -50,11 +66,18 @@ export function UpdateList({ updates, isLoading }: UpdateListProps) {
           <span className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${showUnseenOnly ? 'translate-x-4' : 'translate-x-0'}`} />
         </button>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-        {visibleUpdates.map((update) => (
-          <UpdateCard key={update.id} update={update} />
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+      >
+        {visibleUpdates.map((update, index) => (
+          <motion.div key={update.id} variants={itemVariants} className={index === 0 ? 'md:col-span-2 lg:col-span-2' : ''}>
+            <UpdateCard update={update} featured={index === 0} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {hasMore && (
         <div className="flex justify-center pt-4">

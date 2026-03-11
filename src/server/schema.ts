@@ -18,6 +18,7 @@ export const updates = pgTable("updates", {
   impact_score: integer("impact_score").notNull().default(0),
   source_url: text("source_url").notNull(),
   published: boolean("published").notNull().default(false),
+  is_must_read: boolean("is_must_read").notNull().default(false),
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow()

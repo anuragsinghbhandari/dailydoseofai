@@ -43,6 +43,19 @@ function AdminDashboardPage() {
     }
   });
 
+  const mustReadMutation = useMutation({
+    mutationFn: (payload: { id: string; is_must_read: boolean }) =>
+      (updateUpdate as any)({
+        data: {
+          id: payload.id,
+          data: { is_must_read: payload.is_must_read }
+        }
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "updates"] });
+    }
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => (deleteUpdate as any)({ data: id }),
     onSuccess: () => {
@@ -77,6 +90,7 @@ function AdminDashboardPage() {
                   <TableHead>Category</TableHead>
                   <TableHead>Impact</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Must Read</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -84,7 +98,7 @@ function AdminDashboardPage() {
               <TableBody>
                 {listQuery.data?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       No updates found.
                     </TableCell>
                   </TableRow>
@@ -114,6 +128,23 @@ function AdminDashboardPage() {
                         />
                         <span className="text-sm text-muted-foreground hidden lg:inline-block">
                           {update.published ? "Published" : "Draft"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={update.is_must_read}
+                          disabled={mustReadMutation.isPending}
+                          onCheckedChange={(checked) =>
+                            mustReadMutation.mutate({
+                              id: update.id,
+                              is_must_read: checked
+                            })
+                          }
+                        />
+                        <span className="text-sm text-muted-foreground hidden lg:inline-block">
+                          {update.is_must_read ? "Yes" : "No"}
                         </span>
                       </div>
                     </TableCell>

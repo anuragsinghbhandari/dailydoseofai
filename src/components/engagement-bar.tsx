@@ -16,17 +16,51 @@ export function EngagementBar({ updateId }: { updateId: string }) {
 
     const likeMutation = useMutation({
         mutationFn: () => (toggleLike as any)({ data: { updateId } }),
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: ["engagement", updateId] });
+            const previous = queryClient.getQueryData(["engagement", updateId]);
+            queryClient.setQueryData(["engagement", updateId], (old: any) => ({
+                ...old,
+                liked: !old?.liked,
+                likesCount: !old?.liked ? (old?.likesCount ?? 0) + 1 : Math.max(0, (old?.likesCount ?? 1) - 1),
+            }));
+            return { previous };
+        },
+        onError: (err, variables, context: any) => {
+            if (context?.previous) {
+                queryClient.setQueryData(["engagement", updateId], context.previous);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["engagement", updateId] });
+        },
         onSuccess: (res) => {
             queryClient.setQueryData(["engagement", updateId], (old: any) => ({
                 ...old,
                 liked: (res as any).liked,
-                likesCount: (res as any).liked ? (old?.likesCount ?? 0) + 1 : (old?.likesCount ?? 1) - 1,
             }));
         },
     });
 
     const bookmarkMutation = useMutation({
         mutationFn: () => (toggleBookmark as any)({ data: { updateId } }),
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: ["engagement", updateId] });
+            const previous = queryClient.getQueryData(["engagement", updateId]);
+            queryClient.setQueryData(["engagement", updateId], (old: any) => ({
+                ...old,
+                bookmarked: !old?.bookmarked,
+            }));
+            return { previous };
+        },
+        onError: (err, variables, context: any) => {
+            if (context?.previous) {
+                queryClient.setQueryData(["engagement", updateId], context.previous);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["engagement", updateId] });
+        },
         onSuccess: (res) => {
             queryClient.setQueryData(["engagement", updateId], (old: any) => ({
                 ...old,

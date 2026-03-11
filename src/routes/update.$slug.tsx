@@ -54,25 +54,19 @@ function UpdateDetailPage() {
 
   const dateObj = query.data ? new Date(query.data.created_at) : null;
   let dateStr: string | undefined;
-  let isToday = false;
 
   if (dateObj) {
     dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    isToday = dateStr === todayStr;
   }
 
   const dayUpdatesQuery = useQuery({
     queryKey: ["updates", "date", dateStr],
     queryFn: () => (getUpdatesByDate as any)({ data: dateStr }),
-    enabled: !!dateStr && !isToday
+    enabled: !!dateStr
   });
 
   let sourceList: any[] = [];
-  if (isToday && todayUpdates) {
-    sourceList = todayUpdates;
-  } else if (dayUpdatesQuery.data) {
+  if (dayUpdatesQuery.data) {
     sourceList = dayUpdatesQuery.data as any[];
   }
 

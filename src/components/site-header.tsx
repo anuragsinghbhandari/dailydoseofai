@@ -23,6 +23,14 @@ export function SiteHeader() {
                         >
                             Home
                         </Link>
+                        <Link
+                            to="/must-read"
+                            className="text-sm font-medium transition-colors hover:text-primary"
+                            activeProps={{ className: "text-foreground font-semibold" }}
+                            inactiveProps={{ className: "text-foreground/60" }}
+                        >
+                            Must Read
+                        </Link>
                         {session && (
                             <Link
                                 to="/bookmarks"

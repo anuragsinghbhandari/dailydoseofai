@@ -8,6 +8,7 @@ import {
 import { UpdateList } from "@/components/update-list";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/")({
   component: HomePage
@@ -104,19 +105,29 @@ function HomePage() {
 
         <div className="container relative z-10">
           <div className="flex flex-col items-center space-y-10 text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-md shadow-sm">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-md shadow-sm"
+            >
               <span className="flex h-2 w-2 rounded-full bg-primary mr-2 animate-pulse"></span>
               The latest AI updates
-            </div>
+            </motion.div>
 
-            <div className="space-y-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
+              className="space-y-6"
+            >
               <h1 className="text-5xl font-heading font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl leading-[1.1]">
                 Your <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary via-indigo-400 to-purple-400">Daily Dose</span> of AI News
               </h1>
               <p className="mx-auto max-w-2xl text-muted-foreground md:text-xl/relaxed lg:text-2xl/relaxed leading-relaxed font-light">
-                Stay updated with the latest models, tools, and research in Artificial Intelligence, delivered daily.
+                Catch up on the world's most important AI breakthroughs in 3 minutes or less. Stay ahead of the curve.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -146,25 +157,37 @@ function HomePage() {
           {weekQuery.isLoading ? (
             <Skeleton className="w-full h-32 rounded-xl" />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
-              {getCurrentWeekDays().map(day => {
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5 }}
+              className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4"
+            >
+              {getCurrentWeekDays().map((day, idx) => {
                 const count = groupUpdatesByDate(weekQuery.data ?? [])[day.dateStr] || 0;
                 return (
-                  <Link
+                  <motion.div
                     key={day.dateStr}
-                    to="/date/$date"
-                    params={{ date: day.dateStr }}
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 cursor-pointer' : 'bg-muted/10 opacity-70 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 + 0.2 }}
                   >
-                    <span className="text-sm text-muted-foreground uppercase">{day.dayName}</span>
-                    <span className="text-3xl font-bold mt-1">{day.dateNum}</span>
-                    <span className={`text-xs font-medium mt-2 px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                      {count} {count === 1 ? 'update' : 'updates'}
-                    </span>
-                  </Link>
+                    <Link
+                      to="/date/$date"
+                      params={{ date: day.dateStr }}
+                      className={`flex flex-col items-center justify-center p-4 h-full rounded-xl border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 cursor-pointer hover:-translate-y-1' : 'bg-muted/10 opacity-70 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                    >
+                      <span className="text-sm text-muted-foreground uppercase">{day.dayName}</span>
+                      <span className="text-3xl font-bold mt-1">{day.dateNum}</span>
+                      <span className={`text-xs font-medium mt-2 px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                        {count} {count === 1 ? 'update' : 'updates'}
+                      </span>
+                    </Link>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           )}
         </section>
 
