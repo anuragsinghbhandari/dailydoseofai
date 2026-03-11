@@ -9,7 +9,21 @@ export const Route = createFileRoute("/date/$date")({
   loader: async ({ params }) => {
     const dateUpdates = await (getUpdatesByDate as any)({ data: params.date });
     return { dateUpdates };
-  }
+  },
+  pendingComponent: () => (
+    <div className="container space-y-8 py-12">
+      <div className="h-4 w-32 bg-muted rounded animate-pulse mb-8" />
+      <div className="space-y-4 mb-12">
+        <div className="h-10 w-64 bg-muted rounded animate-pulse" />
+        <div className="h-5 w-96 bg-muted rounded animate-pulse" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-[400px] w-full bg-muted rounded-xl animate-pulse" />
+        ))}
+      </div>
+    </div>
+  )
 });
 
 function DatePage() {

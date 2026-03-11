@@ -175,7 +175,7 @@ export const getUpdatesByDate = createServerFn({ method: "GET" })
 
 export const getAdjacentUpdates = createServerFn({ method: "GET" })
   .handler(async (ctx: any) => {
-    const { slug } = ctx.data as { slug: string };
+    const { slug, list } = ctx.data as { slug: string; list?: string };
 
     // Fetch the current update to get its exact timestamp to find the day it belongs to
     const currentRows = await db
@@ -187,9 +187,48 @@ export const getAdjacentUpdates = createServerFn({ method: "GET" })
     if (currentRows.length === 0) {
       return { prevSlug: null, nextSlug: null };
     }
-    const currentUpdate = currentRows[0];
+    if (list === "must-read") {
+      const allMustReads = await db
+        .select({ slug: updates.slug })
+        .from(updates)
+        .where(eq(updates.is_must_read, true))
+        .orderBy(desc(updates.created_at));
 
-    // Get start and end of that specific day
+      const currentIndex = allMustReads.findIndex(u => u.slug === slug);
+      if (currentIndex !== -1) {
+        return {
+          prevSlug: allMustReads[currentIndex - 1]?.slug || null,
+          nextSlug: allMustReads[currentIndex + 1]?.slug || null
+        };
+      }
+      return { prevSlug: null, nextSlug: null };
+    }
+
+    if (list === "bookmarks") {
+      const session = await getSession();
+      if (!session) return { prevSlug: null, nextSlug: null };
+
+      const { bookmarks: importedBookmarks } = await import("./schema");
+
+      const allBookmarks = await db
+        .select({ slug: updates.slug })
+        .from(importedBookmarks)
+        .innerJoin(updates, eq(importedBookmarks.update_id, updates.id))
+        .where(eq(importedBookmarks.user_id, session.user.id))
+        .orderBy(desc(importedBookmarks.created_at));
+
+      const currentIndex = allBookmarks.findIndex(u => u.slug === slug);
+      if (currentIndex !== -1) {
+        return {
+          prevSlug: allBookmarks[currentIndex - 1]?.slug || null,
+          nextSlug: allBookmarks[currentIndex + 1]?.slug || null
+        };
+      }
+      return { prevSlug: null, nextSlug: null };
+    }
+
+    // Default daily homepage logic
+    const currentUpdate = currentRows[0];
     const dayStart = new Date(currentUpdate.created_at);
     dayStart.setHours(0, 0, 0, 0);
 

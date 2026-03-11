@@ -84,21 +84,27 @@ export const recordView = createServerFn({ method: "POST" })
         return { viewed: true };
     });
 
-export const getUserEngagement = createServerFn({ method: "GET" })
-    .handler(async (ctx: any) => {
-        const { updateId } = ctx.data as { updateId: string };
+export const getUserGlobalEngagement = createServerFn({ method: "GET" })
+    .handler(async () => {
         const session = await getSession();
-        if (!session) return { liked: false, bookmarked: false };
+        if (!session) return { likes: [], bookmarks: [] };
 
-        const [likeRes, bookmarkRes, totalLikes] = await Promise.all([
-            db.select().from(likes).where(and(eq(likes.user_id, session.user.id), eq(likes.update_id, updateId))),
-            db.select().from(bookmarks).where(and(eq(bookmarks.user_id, session.user.id), eq(bookmarks.update_id, updateId))),
-            db.select({ count: sql<number>`count(*)` }).from(likes).where(eq(likes.update_id, updateId))
+        const [userLikes, userBookmarks] = await Promise.all([
+            db.select({ updateId: likes.update_id }).from(likes).where(eq(likes.user_id, session.user.id)),
+            db.select({ updateId: bookmarks.update_id }).from(bookmarks).where(eq(bookmarks.user_id, session.user.id)),
         ]);
 
         return {
-            liked: likeRes.length > 0,
-            bookmarked: bookmarkRes.length > 0,
+            likes: userLikes.map(l => l.updateId).filter(Boolean) as string[],
+            bookmarks: userBookmarks.map(b => b.updateId).filter(Boolean) as string[],
+        };
+    });
+
+export const getArticleEngagement = createServerFn({ method: "GET" })
+    .handler(async (ctx: any) => {
+        const { updateId } = ctx.data as { updateId: string };
+        const totalLikes = await db.select({ count: sql<number>`count(*)` }).from(likes).where(eq(likes.update_id, updateId));
+        return {
             likesCount: Number(totalLikes[0]?.count ?? 0)
         };
     });

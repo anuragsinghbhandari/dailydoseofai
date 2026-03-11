@@ -14,15 +14,17 @@ import { CategoryBadge } from "./category-badge";
 interface UpdateCardProps {
   update: Update;
   featured?: boolean;
+  listContext?: string;
 }
 
-export function UpdateCard({ update, featured }: UpdateCardProps) {
+export function UpdateCard({ update, featured, listContext }: UpdateCardProps) {
   const isSeen = (update as any).isSeen;
 
   return (
     <Link
       to="/update/$slug"
       params={{ slug: update.slug }}
+      search={listContext ? { list: listContext } : undefined}
       className={`block group h-full relative ${isSeen ? 'opacity-70 hover:opacity-100' : ''}`}
     >
       <div className={`absolute -inset-0.5 bg-gradient-to-r from-primary to-purple-600 rounded-xl blur opacity-0 group-hover:opacity-20 transition duration-500 ${featured ? 'opacity-20 group-hover:opacity-40' : ''}`}></div>

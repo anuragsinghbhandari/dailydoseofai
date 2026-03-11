@@ -40,6 +40,7 @@ function BookmarksPage() {
       <UpdateList
         updates={query.data ?? []}
         isLoading={query.isLoading}
+        listContext="bookmarks"
       />
       {!query.isLoading && query.data?.length === 0 && (
         <div className="py-20 text-center border rounded-2xl border-dashed border-border/50">

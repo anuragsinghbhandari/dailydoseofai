@@ -1,9 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { getUpdateBySlug, getAdjacentUpdates } from "@/server/queries";
 import { useSwipeable } from "react-swipeable";
 import { useState } from "react";
+import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
@@ -23,26 +24,52 @@ import { recordView } from "@/server/engagement";
 
 export const Route = createFileRoute("/update/$slug")({
   component: UpdateDetailPage,
-  loader: async ({ params }) => {
+  validateSearch: z.object({
+    list: z.string().optional(),
+  }),
+  loader: async ({ params, deps }) => {
+    const searchDeps = deps as any;
     const [update, adjacent] = await Promise.all([
       (getUpdateBySlug as any)({ data: params.slug }),
-      (getAdjacentUpdates as any)({ data: { slug: params.slug } })
+      (getAdjacentUpdates as any)({ data: { slug: params.slug, list: searchDeps?.list } })
     ]);
     return { update, adjacent };
-  }
+  },
+  loaderDeps: ({ search: { list } }) => ({ list }),
+  pendingComponent: () => (
+    <div className="container max-w-4xl py-12 space-y-8">
+      <div className="h-4 w-32 bg-muted rounded animate-pulse mb-8" />
+      <div className="h-12 w-3/4 bg-muted rounded animate-pulse mb-8" />
+      <div className="flex gap-4 mb-8">
+        <div className="h-24 flex-1 bg-muted rounded-xl animate-pulse" />
+        <div className="h-24 flex-1 bg-muted rounded-xl animate-pulse" />
+      </div>
+      <div className="grid gap-12 md:grid-cols-[1fr_250px]">
+        <div className="space-y-4">
+          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+          <div className="h-4 w-5/6 bg-muted rounded animate-pulse" />
+        </div>
+        <div className="h-64 w-full bg-muted rounded-xl animate-pulse" />
+      </div>
+    </div>
+  )
 });
 
 function UpdateDetailPage() {
   const { slug } = Route.useParams();
+  const { list } = Route.useSearch();
   const loaderData = Route.useLoaderData();
   const navigate = useNavigate();
+  const router = useRouter();
   const [direction, setDirection] = useState(1);
 
   const queryClient = useQueryClient();
 
   // Look up if this exact article already exists in the "Today" list cache or any date cache
   const todayUpdates = queryClient.getQueryData(["updates", "today"]) as any[] | undefined;
-  let initialUpdateData = loaderData.update || todayUpdates?.find(u => u.slug === slug);
+  const listUpdates = list ? queryClient.getQueryData(["updates", list]) as any[] | undefined : undefined;
+  let initialUpdateData = loaderData.update || listUpdates?.find(u => u.slug === slug) || todayUpdates?.find(u => u.slug === slug);
 
   if (!initialUpdateData) {
     const dateQueries = queryClient.getQueriesData({ queryKey: ["updates", "date"] });
@@ -66,17 +93,22 @@ function UpdateDetailPage() {
   const prevSlug = loaderData.adjacent?.prevSlug || null;
   const nextSlug = loaderData.adjacent?.nextSlug || null;
 
+  useEffect(() => {
+    if (nextSlug) router.preloadRoute({ to: `/update/${nextSlug}`, search: { list } }).catch(() => { });
+    if (prevSlug) router.preloadRoute({ to: `/update/${prevSlug}`, search: { list } }).catch(() => { });
+  }, [nextSlug, prevSlug, router, list]);
+
   const handlers = useSwipeable({
     onSwipedLeft: () => {
       if (nextSlug) {
         setDirection(1);
-        navigate({ to: `/update/${nextSlug}` });
+        navigate({ to: `/update/${nextSlug}`, search: { list } });
       }
     },
     onSwipedRight: () => {
       if (prevSlug) {
         setDirection(-1);
-        navigate({ to: `/update/${prevSlug}` });
+        navigate({ to: `/update/${prevSlug}`, search: { list } });
       }
     },
     trackMouse: false
@@ -119,11 +151,11 @@ function UpdateDetailPage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
       <div className="mb-8">
         <Link
-          to="/"
+          to={list === "must-read" ? "/must-read" : list === "bookmarks" ? "/bookmarks" : "/"}
           className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to updates
+          Back to {list === "must-read" ? "Must Reads" : list === "bookmarks" ? "Bookmarks" : "updates"}
         </Link>
       </div>
 
@@ -165,6 +197,7 @@ function UpdateDetailPage() {
                 <Link
                   to="/update/$slug"
                   params={{ slug: prevSlug }}
+                  search={{ list }}
                   onClick={() => setDirection(-1)}
                   className="group relative flex flex-col items-start gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden"
                 >
@@ -187,6 +220,7 @@ function UpdateDetailPage() {
                 <Link
                   to="/update/$slug"
                   params={{ slug: nextSlug }}
+                  search={{ list }}
                   onClick={() => setDirection(1)}
                   className="group relative flex flex-col items-end gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden text-right"
                 >

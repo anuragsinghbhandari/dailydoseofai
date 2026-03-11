@@ -23,9 +23,10 @@ const itemVariants: any = {
 interface UpdateListProps {
   updates?: Update[];
   isLoading?: boolean;
+  listContext?: string;
 }
 
-export function UpdateList({ updates, isLoading }: UpdateListProps) {
+export function UpdateList({ updates, isLoading, listContext }: UpdateListProps) {
   const [displayCount, setDisplayCount] = useState(20);
   const [showUnseenOnly, setShowUnseenOnly] = useState(false);
 
@@ -74,7 +75,7 @@ export function UpdateList({ updates, isLoading }: UpdateListProps) {
       >
         {visibleUpdates.map((update, index) => (
           <motion.div key={update.id} variants={itemVariants} className={index === 0 ? 'md:col-span-2 lg:col-span-2' : ''}>
-            <UpdateCard update={update} featured={index === 0} />
+            <UpdateCard update={update} featured={index === 0} listContext={listContext} />
           </motion.div>
         ))}
       </motion.div>

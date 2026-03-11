@@ -34,6 +34,7 @@ function MustReadPage() {
             <UpdateList
                 updates={query.data ?? []}
                 isLoading={query.isLoading}
+                listContext="must-read"
             />
         </div>
     );
