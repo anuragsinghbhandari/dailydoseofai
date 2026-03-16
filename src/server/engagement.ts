@@ -116,12 +116,16 @@ export const getBookmarkedUpdates = createServerFn({ method: "GET" })
 
         const results = await db
             .select({
-                update: updates
+                update: updates,
+                isSeen: sql<boolean>`EXISTS (SELECT 1 FROM user_views WHERE user_views.update_id = updates.id AND user_views.user_id = ${session.user.id})`
             })
             .from(bookmarks)
             .innerJoin(updates, eq(bookmarks.update_id, updates.id))
             .where(eq(bookmarks.user_id, session.user.id))
             .orderBy(desc(bookmarks.created_at));
 
-        return results.map(r => r.update);
+        return results.map((result: any) => ({
+            ...result.update,
+            isSeen: result.isSeen ?? false
+        }));
     });

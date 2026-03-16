@@ -1,11 +1,12 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Update } from "@/server/schema";
 import { UpdateCard } from "./update-card";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useSession } from "@/lib/auth";
 import { getSeenUpdateIds } from "@/lib/local-seen";
+import { useQueryClient } from "@tanstack/react-query";
 
 const containerVariants: any = {
   hidden: { opacity: 0 },
@@ -44,9 +45,11 @@ function getInitialGuestSeenUpdateIds() {
 
 export function UpdateList({ updates, isLoading, listContext, returnDate, filterStorageKey, skipInitialAnimation }: UpdateListProps) {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const [displayCount, setDisplayCount] = useState(20);
   const [showUnseenOnly, setShowUnseenOnly] = useState(() => getStoredShowUnseenOnly(filterStorageKey));
   const [guestSeenUpdateIds, setGuestSeenUpdateIds] = useState<string[]>(() => getInitialGuestSeenUpdateIds());
+  const previousSessionUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!filterStorageKey || typeof window === "undefined") return;
@@ -77,6 +80,23 @@ export function UpdateList({ updates, isLoading, listContext, returnDate, filter
       window.removeEventListener("storage", syncGuestSeenUpdates);
     };
   }, [session]);
+
+  useEffect(() => {
+    const sessionUserId = session?.user?.id ?? null;
+
+    if (previousSessionUserIdRef.current === undefined) {
+      previousSessionUserIdRef.current = sessionUserId;
+      if (sessionUserId) {
+        queryClient.invalidateQueries({ queryKey: ["updates"] }).catch(() => {});
+      }
+      return;
+    }
+
+    if (previousSessionUserIdRef.current !== sessionUserId) {
+      previousSessionUserIdRef.current = sessionUserId;
+      queryClient.invalidateQueries({ queryKey: ["updates"] }).catch(() => {});
+    }
+  }, [queryClient, session?.user?.id]);
 
   if (isLoading) {
     return (

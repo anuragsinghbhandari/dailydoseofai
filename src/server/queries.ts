@@ -68,6 +68,29 @@ async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {
   }
 }
 
+async function getUpdatesWithSeenState(
+  whereClause: ReturnType<typeof and> | ReturnType<typeof eq>
+): Promise<Update[]> {
+  const session = await getSession();
+
+  const rows = await db.select({
+    update: updates,
+    ...(session
+      ? {
+          isSeen: sql<boolean>`EXISTS (SELECT 1 FROM user_views WHERE user_views.update_id = updates.id AND user_views.user_id = ${session.user.id})`
+        }
+      : {})
+  })
+    .from(updates)
+    .where(whereClause)
+    .orderBy(desc(updates.created_at));
+
+  return rows.map((row: any) => ({
+    ...row.update,
+    isSeen: row.isSeen ?? false
+  })) as Update[];
+}
+
 export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const start = startOfToday();
@@ -276,12 +299,6 @@ export const getAllUpdates = createServerFn({ method: "GET" }).handler(async () 
 });
 
 export const getMustReads = createServerFn({ method: "GET" }).handler(async () => {
-  const rows = await db
-    .select()
-    .from(updates)
-    .where(eq(updates.is_must_read, true))
-    .orderBy(desc(updates.created_at));
-  return rows as Update[];
+  return getUpdatesWithSeenState(eq(updates.is_must_read, true));
 });
-
 

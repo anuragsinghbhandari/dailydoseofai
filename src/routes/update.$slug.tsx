@@ -24,6 +24,17 @@ import { recordView } from "@/server/engagement";
 import { useSession } from "@/lib/auth";
 import { markUpdateAsSeen } from "@/lib/local-seen";
 
+function markUpdateSeenInCachedLists(queryClient: ReturnType<typeof useQueryClient>, updateId: string) {
+  queryClient.setQueriesData({ queryKey: ["updates"] }, (existing) => {
+    if (!Array.isArray(existing)) return existing;
+
+    return existing.map((item: any) => {
+      if (!item || typeof item !== "object" || item.id !== updateId) return item;
+      return { ...item, isSeen: true };
+    });
+  });
+}
+
 export const Route = createFileRoute("/update/$slug")({
   component: UpdateDetailPage,
   validateSearch: z.object({
@@ -124,12 +135,17 @@ function UpdateDetailPage() {
   useEffect(() => {
     if (update?.id) {
       if (session) {
-        (recordView as any)({ data: { updateId: update.id } }).catch(console.error);
+        markUpdateSeenInCachedLists(queryClient, update.id);
+        (recordView as any)({ data: { updateId: update.id } })
+          .then(() => {
+            markUpdateSeenInCachedLists(queryClient, update.id);
+          })
+          .catch(console.error);
       } else {
         markUpdateAsSeen(update.id);
       }
     }
-  }, [session, update?.id]);
+  }, [queryClient, session, update?.id]);
 
   if (query.isLoading) {
     return (
