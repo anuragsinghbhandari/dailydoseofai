@@ -10,21 +10,28 @@ import { Badge } from "@/components/ui/badge";
 import { type Update } from "@/server/schema";
 import { ImpactScore } from "./impact-score";
 import { CategoryBadge } from "./category-badge";
+import { saveCurrentScrollPosition } from "@/lib/scroll-memory";
 
 interface UpdateCardProps {
   update: Update;
   featured?: boolean;
   listContext?: string;
+  returnDate?: string;
 }
 
-export function UpdateCard({ update, featured, listContext }: UpdateCardProps) {
+export function UpdateCard({ update, featured, listContext, returnDate }: UpdateCardProps) {
   const isSeen = (update as any).isSeen;
 
   return (
     <Link
       to="/update/$slug"
       params={{ slug: update.slug }}
-      search={listContext ? { list: listContext } : undefined}
+      search={listContext || returnDate ? { ...(listContext ? { list: listContext } : {}), ...(returnDate ? { date: returnDate } : {}) } : undefined}
+      onClick={() => {
+        if (!listContext && typeof window !== "undefined" && window.location.pathname === "/") {
+          saveCurrentScrollPosition();
+        }
+      }}
       className={`block group h-full relative ${isSeen ? 'opacity-70 hover:opacity-100' : ''}`}
     >
       <div className={`absolute -inset-0.5 bg-gradient-to-r from-primary to-purple-600 rounded-xl blur opacity-0 group-hover:opacity-20 transition duration-500 ${featured ? 'opacity-20 group-hover:opacity-40' : ''}`}></div>
@@ -66,4 +73,3 @@ export function UpdateCard({ update, featured, listContext }: UpdateCardProps) {
     </Link>
   );
 }
-

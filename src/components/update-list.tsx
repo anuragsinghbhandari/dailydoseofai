@@ -1,9 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Update } from "@/server/schema";
 import { UpdateCard } from "./update-card";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useSession } from "@/lib/auth";
+import { getSeenUpdateIds } from "@/lib/local-seen";
 
 const containerVariants: any = {
   hidden: { opacity: 0 },
@@ -24,11 +26,57 @@ interface UpdateListProps {
   updates?: Update[];
   isLoading?: boolean;
   listContext?: string;
+  returnDate?: string;
+  filterStorageKey?: string;
+  skipInitialAnimation?: boolean;
 }
 
-export function UpdateList({ updates, isLoading, listContext }: UpdateListProps) {
+function getStoredShowUnseenOnly(filterStorageKey?: string) {
+  if (!filterStorageKey || typeof window === "undefined") return false;
+
+  return window.localStorage.getItem(`update-list:${filterStorageKey}:show-unseen-only`) === "true";
+}
+
+function getInitialGuestSeenUpdateIds() {
+  if (typeof window === "undefined") return [];
+  return getSeenUpdateIds();
+}
+
+export function UpdateList({ updates, isLoading, listContext, returnDate, filterStorageKey, skipInitialAnimation }: UpdateListProps) {
+  const { data: session } = useSession();
   const [displayCount, setDisplayCount] = useState(20);
-  const [showUnseenOnly, setShowUnseenOnly] = useState(false);
+  const [showUnseenOnly, setShowUnseenOnly] = useState(() => getStoredShowUnseenOnly(filterStorageKey));
+  const [guestSeenUpdateIds, setGuestSeenUpdateIds] = useState<string[]>(() => getInitialGuestSeenUpdateIds());
+
+  useEffect(() => {
+    if (!filterStorageKey || typeof window === "undefined") return;
+    window.localStorage.setItem(
+      `update-list:${filterStorageKey}:show-unseen-only`,
+      String(showUnseenOnly)
+    );
+  }, [filterStorageKey, showUnseenOnly]);
+
+  useEffect(() => {
+    setShowUnseenOnly(getStoredShowUnseenOnly(filterStorageKey));
+  }, [filterStorageKey]);
+
+  useEffect(() => {
+    if (session || typeof window === "undefined") {
+      setGuestSeenUpdateIds([]);
+      return;
+    }
+
+    const syncGuestSeenUpdates = () => {
+      setGuestSeenUpdateIds(getSeenUpdateIds());
+    };
+
+    syncGuestSeenUpdates();
+    window.addEventListener("storage", syncGuestSeenUpdates);
+
+    return () => {
+      window.removeEventListener("storage", syncGuestSeenUpdates);
+    };
+  }, [session]);
 
   if (isLoading) {
     return (
@@ -50,7 +98,13 @@ export function UpdateList({ updates, isLoading, listContext }: UpdateListProps)
     );
   }
 
-  const filteredUpdates = showUnseenOnly ? updates.filter(u => !(u as any).isSeen) : updates;
+  const guestSeenSet = new Set(guestSeenUpdateIds);
+  const effectiveUpdates = updates.map((update) => ({
+    ...update,
+    isSeen: (update as any).isSeen || (!session && guestSeenSet.has(update.id))
+  }));
+
+  const filteredUpdates = showUnseenOnly ? effectiveUpdates.filter(u => !(u as any).isSeen) : effectiveUpdates;
   const visibleUpdates = filteredUpdates.slice(0, displayCount);
   const hasMore = displayCount < filteredUpdates.length;
 
@@ -61,7 +115,10 @@ export function UpdateList({ updates, isLoading, listContext }: UpdateListProps)
         <button
           role="switch"
           aria-checked={showUnseenOnly}
-          onClick={() => setShowUnseenOnly(!showUnseenOnly)}
+          onClick={() => {
+            setShowUnseenOnly(!showUnseenOnly);
+            setDisplayCount(20);
+          }}
           className={`peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${showUnseenOnly ? 'bg-primary' : 'bg-input'}`}
         >
           <span className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${showUnseenOnly ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -69,13 +126,18 @@ export function UpdateList({ updates, isLoading, listContext }: UpdateListProps)
       </div>
       <motion.div
         variants={containerVariants}
-        initial="hidden"
+        initial={skipInitialAnimation ? false : "hidden"}
         animate="show"
         className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
       >
         {visibleUpdates.map((update, index) => (
-          <motion.div key={update.id} variants={itemVariants} className={index === 0 ? 'md:col-span-2 lg:col-span-2' : ''}>
-            <UpdateCard update={update} featured={index === 0} listContext={listContext} />
+          <motion.div
+            key={update.id}
+            variants={itemVariants}
+            initial={skipInitialAnimation ? false : undefined}
+            className={index === 0 ? 'md:col-span-2 lg:col-span-2' : ''}
+          >
+            <UpdateCard update={update} featured={index === 0} listContext={listContext} returnDate={returnDate} />
           </motion.div>
         ))}
       </motion.div>
@@ -95,4 +157,3 @@ export function UpdateList({ updates, isLoading, listContext }: UpdateListProps)
     </div>
   );
 }
-

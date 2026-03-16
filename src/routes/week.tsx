@@ -17,7 +17,8 @@ function WeekPage() {
   const query = useQuery({
     queryKey: ["updates", "week"],
     queryFn: () => getWeekUpdates(),
-    initialData: loaderData.week
+    initialData: loaderData.week,
+    staleTime: 5 * 60 * 1000
   });
 
   return (
@@ -32,4 +33,3 @@ function WeekPage() {
     </div>
   );
 }
-

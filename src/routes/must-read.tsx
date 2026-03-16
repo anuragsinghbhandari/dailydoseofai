@@ -17,7 +17,8 @@ function MustReadPage() {
     const query = useQuery({
         queryKey: ["updates", "must-read"],
         queryFn: () => getMustReads(),
-        initialData: loaderData.mustReads
+        initialData: loaderData.mustReads,
+        staleTime: 5 * 60 * 1000
     });
 
     return (
@@ -35,6 +36,7 @@ function MustReadPage() {
                 updates={query.data ?? []}
                 isLoading={query.isLoading}
                 listContext="must-read"
+                filterStorageKey="must-read"
             />
         </div>
     );

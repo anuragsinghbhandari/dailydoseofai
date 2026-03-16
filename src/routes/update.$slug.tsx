@@ -21,11 +21,14 @@ import { Button } from "@/components/ui/button";
 import { EngagementBar } from "@/components/engagement-bar";
 import { CommentsSection } from "@/components/comments-section";
 import { recordView } from "@/server/engagement";
+import { useSession } from "@/lib/auth";
+import { markUpdateAsSeen } from "@/lib/local-seen";
 
 export const Route = createFileRoute("/update/$slug")({
   component: UpdateDetailPage,
   validateSearch: z.object({
     list: z.string().optional(),
+    date: z.string().optional(),
   }),
   loader: async ({ params, deps }) => {
     const searchDeps = deps as any;
@@ -35,7 +38,7 @@ export const Route = createFileRoute("/update/$slug")({
     ]);
     return { update, adjacent };
   },
-  loaderDeps: ({ search: { list } }) => ({ list }),
+  loaderDeps: ({ search: { list, date } }) => ({ list, date }),
   pendingComponent: () => (
     <div className="container max-w-4xl py-12 space-y-8">
       <div className="h-4 w-32 bg-muted rounded animate-pulse mb-8" />
@@ -58,11 +61,12 @@ export const Route = createFileRoute("/update/$slug")({
 
 function UpdateDetailPage() {
   const { slug } = Route.useParams();
-  const { list } = Route.useSearch();
+  const { list, date } = Route.useSearch();
   const loaderData = Route.useLoaderData();
   const navigate = useNavigate();
   const router = useRouter();
   const [direction, setDirection] = useState(1);
+  const { data: session } = useSession();
 
   const queryClient = useQueryClient();
 
@@ -94,21 +98,22 @@ function UpdateDetailPage() {
   const nextSlug = loaderData.adjacent?.nextSlug || null;
 
   useEffect(() => {
-    if (nextSlug) router.preloadRoute({ to: `/update/${nextSlug}`, search: { list } }).catch(() => { });
-    if (prevSlug) router.preloadRoute({ to: `/update/${prevSlug}`, search: { list } }).catch(() => { });
-  }, [nextSlug, prevSlug, router, list]);
+    const search = { ...(list ? { list } : {}), ...(date ? { date } : {}) };
+    if (nextSlug) router.preloadRoute({ to: `/update/${nextSlug}`, search }).catch(() => { });
+    if (prevSlug) router.preloadRoute({ to: `/update/${prevSlug}`, search }).catch(() => { });
+  }, [nextSlug, prevSlug, router, list, date]);
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {
       if (nextSlug) {
         setDirection(1);
-        navigate({ to: `/update/${nextSlug}`, search: { list } });
+        navigate({ to: `/update/${nextSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
       }
     },
     onSwipedRight: () => {
       if (prevSlug) {
         setDirection(-1);
-        navigate({ to: `/update/${prevSlug}`, search: { list } });
+        navigate({ to: `/update/${prevSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
       }
     },
     trackMouse: false
@@ -118,9 +123,13 @@ function UpdateDetailPage() {
 
   useEffect(() => {
     if (update?.id) {
-      (recordView as any)({ data: { updateId: update.id } }).catch(console.error);
+      if (session) {
+        (recordView as any)({ data: { updateId: update.id } }).catch(console.error);
+      } else {
+        markUpdateAsSeen(update.id);
+      }
     }
-  }, [update?.id]);
+  }, [session, update?.id]);
 
   if (query.isLoading) {
     return (
@@ -151,11 +160,12 @@ function UpdateDetailPage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
       <div className="mb-8">
         <Link
-          to={list === "must-read" ? "/must-read" : list === "bookmarks" ? "/bookmarks" : "/"}
+          to={date ? "/date/$date" : list === "must-read" ? "/must-read" : list === "bookmarks" ? "/bookmarks" : "/"}
+          params={date ? { date } : undefined}
           className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to {list === "must-read" ? "Must Reads" : list === "bookmarks" ? "Bookmarks" : "updates"}
+          Back to {date ? "updates" : list === "must-read" ? "Must Reads" : list === "bookmarks" ? "Bookmarks" : "updates"}
         </Link>
       </div>
 
@@ -197,7 +207,7 @@ function UpdateDetailPage() {
                 <Link
                   to="/update/$slug"
                   params={{ slug: prevSlug }}
-                  search={{ list }}
+                  search={{ ...(list ? { list } : {}), ...(date ? { date } : {}) }}
                   onClick={() => setDirection(-1)}
                   className="group relative flex flex-col items-start gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden"
                 >
@@ -220,7 +230,7 @@ function UpdateDetailPage() {
                 <Link
                   to="/update/$slug"
                   params={{ slug: nextSlug }}
-                  search={{ list }}
+                  search={{ ...(list ? { list } : {}), ...(date ? { date } : {}) }}
                   onClick={() => setDirection(1)}
                   className="group relative flex flex-col items-end gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden text-right"
                 >

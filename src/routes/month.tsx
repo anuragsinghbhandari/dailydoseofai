@@ -17,7 +17,8 @@ function MonthPage() {
   const query = useQuery({
     queryKey: ["updates", "month"],
     queryFn: () => getMonthUpdates(),
-    initialData: loaderData.month
+    initialData: loaderData.month,
+    staleTime: 5 * 60 * 1000
   });
 
   return (
@@ -32,4 +33,3 @@ function MonthPage() {
     </div>
   );
 }
-

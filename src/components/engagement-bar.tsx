@@ -92,9 +92,9 @@ export function EngagementBar({ updateId }: { updateId: string }) {
                 className={`hover:bg-red-500/10 transition-colors ${liked ? "text-red-500 hover:text-red-600" : ""}`}
                 onClick={() => {
                     if (!session) return alert("Please sign in to like this.");
+                    if (likeMutation.isPending) return;
                     likeMutation.mutate();
                 }}
-                disabled={likeMutation.isPending}
             >
                 <Heart className={`mr-2 h-4 w-4 ${liked ? "fill-current" : ""}`} />
                 <span>{likesCount}</span>
@@ -107,9 +107,9 @@ export function EngagementBar({ updateId }: { updateId: string }) {
                 className={`hover:bg-primary/10 transition-colors ${bookmarked ? "text-primary hover:text-primary/80" : ""}`}
                 onClick={() => {
                     if (!session) return alert("Please sign in to bookmark this.");
+                    if (bookmarkMutation.isPending) return;
                     bookmarkMutation.mutate();
                 }}
-                disabled={bookmarkMutation.isPending}
             >
                 <Bookmark className={`mr-2 h-4 w-4 ${bookmarked ? "fill-current" : ""}`} />
                 Bookmark

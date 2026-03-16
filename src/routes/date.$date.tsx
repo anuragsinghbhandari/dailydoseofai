@@ -33,7 +33,8 @@ function DatePage() {
   const query = useQuery({
     queryKey: ["updates", "date", date],
     queryFn: () => (getUpdatesByDate as any)({ data: date }),
-    initialData: loaderData.dateUpdates
+    initialData: loaderData.dateUpdates,
+    staleTime: 5 * 60 * 1000
   });
 
   const dateObj = new Date(`${date}T12:00:00`); // use noon to avoid timezone shifts throwing off the day
@@ -61,6 +62,8 @@ function DatePage() {
       <UpdateList
         updates={query.data ?? []}
         isLoading={query.isLoading}
+        returnDate={date}
+        filterStorageKey={`date-${date}`}
       />
     </div>
   );

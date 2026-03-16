@@ -17,7 +17,8 @@ function TodayPage() {
   const query = useQuery({
     queryKey: ["updates", "today"],
     queryFn: () => getTodayUpdates(),
-    initialData: loaderData.today
+    initialData: loaderData.today,
+    staleTime: 5 * 60 * 1000
   });
 
   return (
@@ -32,4 +33,3 @@ function TodayPage() {
     </div>
   );
 }
-

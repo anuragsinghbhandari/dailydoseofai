@@ -9,6 +9,8 @@ import { UpdateList } from "@/components/update-list";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLayoutEffect, useState } from "react";
+import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -89,23 +91,43 @@ function getCurrentMonthDays() {
 
 function HomePage() {
   const loaderData = Route.useLoaderData();
+  const [isRestoringFeedState, setIsRestoringFeedState] = useState(false);
+
+  useLayoutEffect(() => {
+    const shouldRestore = consumeScrollRestoreFlag("/");
+    if (!shouldRestore) return;
+
+    setIsRestoringFeedState(true);
+    restoreScrollPosition("/");
+
+    const timeoutId = window.setTimeout(() => {
+      setIsRestoringFeedState(false);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const todayQuery = useQuery({
     queryKey: ["updates", "today"],
     queryFn: () => getTodayUpdates(),
-    initialData: loaderData.today
+    initialData: loaderData.today,
+    staleTime: 5 * 60 * 1000
   });
 
   const weekQuery = useQuery({
     queryKey: ["updates", "week", "summary"],
     queryFn: () => getWeekUpdatesSummary(),
-    initialData: loaderData.week
+    initialData: loaderData.week,
+    staleTime: 5 * 60 * 1000
   });
 
   const monthQuery = useQuery({
     queryKey: ["updates", "month", "summary"],
     queryFn: () => getMonthUpdatesSummary(),
-    initialData: loaderData.month
+    initialData: loaderData.month,
+    staleTime: 5 * 60 * 1000
   });
 
   return (
@@ -156,6 +178,8 @@ function HomePage() {
           <UpdateList
             updates={todayQuery.data ?? []}
             isLoading={todayQuery.isLoading}
+            filterStorageKey="home"
+            skipInitialAnimation={isRestoringFeedState}
           />
         </section>
 
@@ -246,4 +270,3 @@ function HomePage() {
     </div>
   );
 }
-

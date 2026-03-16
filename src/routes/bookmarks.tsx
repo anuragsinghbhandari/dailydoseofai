@@ -36,6 +36,7 @@ function BookmarksPage() {
     queryKey: ["updates", "bookmarks"],
     queryFn: () => (getBookmarkedUpdates as any)(),
     initialData: loaderData.bookmarks,
+    staleTime: 60 * 1000,
     enabled: !!session
   });
 
@@ -64,6 +65,7 @@ function BookmarksPage() {
         updates={query.data ?? []}
         isLoading={query.isLoading}
         listContext="bookmarks"
+        filterStorageKey="bookmarks"
       />
       {!query.isLoading && query.data?.length === 0 && (
         <div className="py-20 text-center border rounded-2xl border-dashed border-border/50">
