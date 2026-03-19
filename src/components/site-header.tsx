@@ -5,14 +5,27 @@ import { ThemeToggle } from "./theme-toggle";
 import { AuthButton } from "./auth-button";
 import { useSession } from "@/lib/auth";
 import { getUserStreak } from "@/server/engagement";
+import type { ViewerState } from "@/server/auth-state";
 
-export function SiteHeader() {
-    const { data: session } = useSession();
+interface SiteHeaderProps {
+    initialViewer?: ViewerState | null;
+}
+
+export function SiteHeader({ initialViewer }: SiteHeaderProps) {
+    const { data: clientSession } = useSession();
+    const session = clientSession ?? initialViewer?.session ?? null;
     const streakQuery = useQuery({
         queryKey: ["user", "streak"],
         queryFn: () => getUserStreak(),
         enabled: !!session,
-        staleTime: 60 * 1000,
+        initialData: initialViewer?.session
+            ? {
+                streak: initialViewer.streak,
+                lastActiveDate: initialViewer.lastActiveDate,
+            }
+            : undefined,
+        staleTime: 5 * 60 * 1000,
+        refetchOnMount: false,
     });
 
     return (
@@ -52,7 +65,7 @@ export function SiteHeader() {
                             </div>
                         )}
                         <ThemeToggle />
-                        <AuthButton />
+                        <AuthButton initialViewer={initialViewer} />
                     </div>
                 </div>
             </div>

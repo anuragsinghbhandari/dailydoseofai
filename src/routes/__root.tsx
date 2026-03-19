@@ -12,8 +12,13 @@ import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@vercel/analytics/react";
 import appCss from "@/index.css?url";
+import { getViewerState } from "@/server/auth-state";
 
 export const Route = createRootRoute({
+  loader: async () => {
+    const viewer = await getViewerState();
+    return { viewer };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -45,6 +50,7 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
+  const { viewer } = Route.useLoaderData();
   const [queryClient] = React.useState(
     () => new QueryClient()
   );
@@ -58,7 +64,7 @@ function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider defaultTheme="system">
             <div className="relative flex min-h-screen flex-col bg-background">
-              <SiteHeader />
+              <SiteHeader initialViewer={viewer} />
               <main className="flex-1">
                 <Outlet />
               </main>
@@ -72,4 +78,3 @@ function RootLayout() {
     </html>
   );
 }
-

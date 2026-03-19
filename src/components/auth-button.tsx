@@ -11,15 +11,28 @@ import {
 } from "./ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { getUserStreak } from "@/server/engagement";
+import type { ViewerState } from "@/server/auth-state";
 
-export function AuthButton() {
+interface AuthButtonProps {
+    initialViewer?: ViewerState | null;
+}
+
+export function AuthButton({ initialViewer }: AuthButtonProps) {
     const [mounted, setMounted] = useState(false);
-    const { data: session, isPending } = useSession();
+    const { data: clientSession, isPending } = useSession();
+    const session = clientSession ?? initialViewer?.session ?? null;
     const streakQuery = useQuery({
         queryKey: ["user", "streak"],
         queryFn: () => getUserStreak(),
         enabled: !!session,
-        staleTime: 60 * 1000,
+        initialData: initialViewer?.session
+            ? {
+                streak: initialViewer.streak,
+                lastActiveDate: initialViewer.lastActiveDate,
+            }
+            : undefined,
+        staleTime: 5 * 60 * 1000,
+        refetchOnMount: false,
     });
 
     useEffect(() => {
@@ -27,11 +40,11 @@ export function AuthButton() {
     }, []);
 
     // Don't render auth UI during SSR - prevents HTTPError from useSession fetch
-    if (!mounted) {
+    if (!mounted && !session) {
         return <Button variant="outline" size="sm" disabled>...</Button>;
     }
 
-    if (isPending) {
+    if (isPending && !session) {
         return <Button variant="outline" size="sm" disabled>...</Button>;
     }
 
