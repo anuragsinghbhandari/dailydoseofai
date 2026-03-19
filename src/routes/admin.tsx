@@ -1,7 +1,13 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { getServerSession } from "@/server/auth-state";
+import { createNoIndexHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/admin")({
+    head: () =>
+        createNoIndexHead(
+            "Admin | AI Dose",
+            "Administrative interface for managing AI Dose content."
+        ),
     beforeLoad: async () => {
         // Secure server-side check
         const session = await getServerSession();

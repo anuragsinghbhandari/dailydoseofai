@@ -11,8 +11,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLayoutEffect, useState } from "react";
 import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
+import { createSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
+  head: () =>
+    createSeoHead({
+      title: "AI Dose | Daily AI News and Analysis",
+      description:
+        "Catch up on the most important AI news, product launches, and research in minutes with AI Dose.",
+      pathname: "/"
+    }),
   component: HomePage,
   loader: async () => {
     const [today, week, month] = await Promise.all([

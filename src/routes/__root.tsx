@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@vercel/analytics/react";
 import appCss from "@/index.css?url";
 import { getViewerState } from "@/server/auth-state";
+import { SITE_NAME } from "@/lib/seo";
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -26,7 +27,7 @@ export const Route = createRootRoute({
         name: "viewport",
         content: "width=device-width, initial-scale=1"
       },
-      { title: "AI Dose - Daily AI News" }
+      { title: SITE_NAME }
     ],
     links: [
       {

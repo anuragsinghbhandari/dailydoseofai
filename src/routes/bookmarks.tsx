@@ -3,8 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { getBookmarkedUpdates } from "@/server/engagement";
 import { UpdateList } from "@/components/update-list";
 import { useSession } from "@/lib/auth";
+import { createNoIndexHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/bookmarks")({
+  head: () =>
+    createNoIndexHead(
+      "Bookmarks | AI Dose",
+      "Private saved updates for signed-in AI Dose users."
+    ),
   component: BookmarksPage,
   loader: async () => {
     try {

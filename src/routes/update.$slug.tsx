@@ -24,6 +24,7 @@ import { recordView } from "@/server/engagement";
 import { useSession } from "@/lib/auth";
 import { markUpdateAsSeen } from "@/lib/local-seen";
 import { buildNavigationContextKey, getNavigationSlugs } from "@/lib/navigation-memory";
+import { absoluteUrl, createSeoHead, truncateDescription } from "@/lib/seo";
 
 function markUpdateSeenInCachedLists(queryClient: ReturnType<typeof useQueryClient>, updateId: string) {
   queryClient.setQueriesData({ queryKey: ["updates"] }, (existing) => {
@@ -38,6 +39,49 @@ function markUpdateSeenInCachedLists(queryClient: ReturnType<typeof useQueryClie
 
 export const Route = createFileRoute("/update/$slug")({
   component: UpdateDetailPage,
+  head: ({ params, loaderData }) => {
+    const update = loaderData?.update;
+    const title = update?.title ? `${update.title} | AI Dose` : "AI Update | AI Dose";
+    const description = truncateDescription(
+      update?.summary || update?.why_it_matters || "Read the latest AI update on AI Dose."
+    );
+
+    return {
+      ...createSeoHead({
+        title,
+        description,
+        pathname: `/update/${params.slug}`,
+        type: "article",
+        publishedTime: update?.created_at ? new Date(update.created_at).toISOString() : undefined,
+        modifiedTime: update?.created_at ? new Date(update.created_at).toISOString() : undefined
+      }),
+      scripts: update
+        ? [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "NewsArticle",
+                headline: update.title,
+                description,
+                datePublished: new Date(update.created_at).toISOString(),
+                dateModified: new Date(update.created_at).toISOString(),
+                mainEntityOfPage: absoluteUrl(`/update/${params.slug}`),
+                articleSection: update.category,
+                url: absoluteUrl(`/update/${params.slug}`),
+                publisher: {
+                  "@type": "Organization",
+                  name: "AI Dose",
+                  url: absoluteUrl("/")
+                },
+                isAccessibleForFree: true,
+                ...(update.source_url ? { sameAs: [update.source_url] } : {})
+              })
+            }
+          ]
+        : []
+    };
+  },
   validateSearch: z.object({
     list: z.string().optional(),
     date: z.string().optional(),

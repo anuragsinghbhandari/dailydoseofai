@@ -3,8 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { getUpdatesByDate } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
 import { ArrowLeft } from "lucide-react";
+import { createSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/date/$date")({
+  head: ({ params }) =>
+    createSeoHead({
+      title: `AI News for ${params.date} | AI Dose`,
+      description: `Browse every AI update published on ${params.date} in the AI Dose archive.`,
+      pathname: `/date/${params.date}`
+    }),
   component: DatePage,
   loader: async ({ params }) => {
     const dateUpdates = await (getUpdatesByDate as any)({ data: params.date });

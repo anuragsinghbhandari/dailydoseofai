@@ -2,8 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getMonthUpdates } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
+import { createSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/month")({
+  head: () =>
+    createSeoHead({
+      title: "This Month in AI | AI Dose",
+      description: "Browse the most important AI news and trends from this month on AI Dose.",
+      pathname: "/month"
+    }),
   component: MonthPage,
   loader: async () => {
     const month = await getMonthUpdates();

@@ -2,8 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getWeekUpdates } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
+import { createSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/week")({
+  head: () =>
+    createSeoHead({
+      title: "This Week in AI | AI Dose",
+      description: "Catch up on the biggest AI stories, releases, and developments from the current week.",
+      pathname: "/week"
+    }),
   component: WeekPage,
   loader: async () => {
     const week = await getWeekUpdates();

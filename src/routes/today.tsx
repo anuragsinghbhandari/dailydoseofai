@@ -2,8 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getTodayUpdates } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
+import { createSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/today")({
+  head: () =>
+    createSeoHead({
+      title: "Today's AI News | AI Dose",
+      description: "Read today's most important AI updates, launches, and announcements in one place.",
+      pathname: "/today"
+    }),
   component: TodayPage,
   loader: async () => {
     const today = await getTodayUpdates();
