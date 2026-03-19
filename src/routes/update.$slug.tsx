@@ -114,19 +114,22 @@ function UpdateDetailPage() {
     if (prevSlug) router.preloadRoute({ to: `/update/${prevSlug}`, search }).catch(() => { });
   }, [nextSlug, prevSlug, router, list, date]);
 
+  const goToNext = () => {
+    if (!nextSlug) return;
+    setDirection(1);
+    navigate({ to: `/update/${nextSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
+  };
+
+  const goToPrev = () => {
+    if (!prevSlug) return;
+    setDirection(-1);
+    navigate({ to: `/update/${prevSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
+  };
+
   const handlers = useSwipeable({
-    onSwipedLeft: () => {
-      if (nextSlug) {
-        setDirection(1);
-        navigate({ to: `/update/${nextSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
-      }
-    },
-    onSwipedRight: () => {
-      if (prevSlug) {
-        setDirection(-1);
-        navigate({ to: `/update/${prevSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
-      }
-    },
+    onSwipedLeft: goToNext,
+    onSwipedRight: goToPrev,
+    delta: 80,
     trackMouse: false
   });
 
@@ -178,8 +181,11 @@ function UpdateDetailPage() {
   };
 
   return (
-    <div {...handlers} className="container max-w-4xl py-12 relative overflow-hidden">
+    <div {...handlers} className="container max-w-5xl px-4 py-6 md:py-12 relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
+      <div className="fixed right-3 top-1/2 z-20 -translate-y-1/2 sm:hidden">
+        <EngagementBar updateId={update.id} variant="shorts" />
+      </div>
       <div className="mb-8">
         <Link
           to={date ? "/date/$date" : list === "bookmarks" ? "/bookmarks" : "/"}
@@ -223,7 +229,31 @@ function UpdateDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between w-full mb-8 gap-4">
+          <div className="mb-6 flex items-center justify-between rounded-2xl border border-border/50 bg-card/70 px-4 py-3 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur sm:hidden">
+            <button
+              type="button"
+              onClick={goToPrev}
+              disabled={!prevSlug}
+              className="inline-flex items-center gap-1 disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </button>
+            <span className="text-center text-[11px] uppercase tracking-[0.24em] text-foreground/60">
+              Swipe left/right
+            </span>
+            <button
+              type="button"
+              onClick={goToNext}
+              disabled={!nextSlug}
+              className="inline-flex items-center gap-1 disabled:opacity-30"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="mb-8 hidden w-full items-center justify-between gap-4 sm:flex">
             <div className="flex-1">
               {prevSlug ? (
                 <Link
@@ -273,13 +303,13 @@ function UpdateDetailPage() {
 
           <Separator className="my-8" />
 
-          <div className="grid gap-12 md:grid-cols-[1fr_250px]">
-            <article className="space-y-8 prose prose-neutral dark:prose-invert max-w-none">
-              <section>
+          <div className="grid gap-8 md:gap-12 md:grid-cols-[minmax(0,1fr)_250px]">
+            <article className="space-y-6 md:space-y-8 prose prose-neutral dark:prose-invert max-w-none">
+              <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                 <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
                   Summary
                 </h2>
-                <p className="text-lg text-muted-foreground leading-relaxed">
+                <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
                   {update.summary}
                 </p>
               </section>
@@ -287,7 +317,7 @@ function UpdateDetailPage() {
 
 
               {update.content && !update.content.startsWith('Source: http') && (
-                <section>
+                <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                   <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
                     Deep Dive
                   </h2>
@@ -297,12 +327,16 @@ function UpdateDetailPage() {
                 </section>
               )}
 
-              <EngagementBar updateId={update.id} />
-              <CommentsSection updateId={update.id} />
+              <div className="hidden sm:block">
+                <EngagementBar updateId={update.id} />
+              </div>
+              <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                <CommentsSection updateId={update.id} />
+              </section>
             </article>
 
             <aside className="space-y-6">
-              <Card>
+              <Card className="rounded-3xl border-border/50 bg-card/80 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="text-sm">About this update</CardTitle>
                 </CardHeader>

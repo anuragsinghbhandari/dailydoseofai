@@ -3,9 +3,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getUserGlobalEngagement, getArticleEngagement, toggleLike, toggleBookmark } from "@/server/engagement";
 import { Button } from "./ui/button";
 import { useSession } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
-export function EngagementBar({ updateId }: { updateId: string }) {
+interface EngagementBarProps {
+    updateId: string;
+    variant?: "default" | "shorts";
+}
+
+export function EngagementBar({ updateId, variant = "default" }: EngagementBarProps) {
     const { data: session } = useSession();
+    const { toast } = useToast();
     const queryClient = useQueryClient();
 
     const { data: globalEng } = useQuery({
@@ -23,6 +30,14 @@ export function EngagementBar({ updateId }: { updateId: string }) {
     const liked = globalEng?.likes?.includes(updateId) ?? false;
     const bookmarked = globalEng?.bookmarks?.includes(updateId) ?? false;
     const likesCount = articleEng?.likesCount ?? 0;
+    const isShorts = variant === "shorts";
+
+    const requireLogin = () => {
+        toast({
+            title: "Sign in required",
+            description: "Log in to like and bookmark updates.",
+        });
+    };
 
     const likeMutation = useMutation({
         mutationFn: () => (toggleLike as any)({ data: { updateId } }),
@@ -84,6 +99,43 @@ export function EngagementBar({ updateId }: { updateId: string }) {
         },
     });
 
+    if (isShorts) {
+        return (
+            <div className="flex flex-col items-center gap-4 text-white">
+                <button
+                    type="button"
+                    className={`flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-black/35 shadow-xl backdrop-blur-md transition-transform active:scale-95 ${liked ? "text-red-400" : "text-white"}`}
+                    onClick={() => {
+                        if (!session) return requireLogin();
+                        if (likeMutation.isPending) return;
+                        likeMutation.mutate();
+                    }}
+                >
+                    <Heart className={`h-6 w-6 ${liked ? "fill-current" : ""}`} />
+                </button>
+                <div className="text-center text-xs font-medium leading-tight">
+                    <div>{likesCount}</div>
+                    <div className="text-white/70">Likes</div>
+                </div>
+
+                <button
+                    type="button"
+                    className={`flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-black/35 shadow-xl backdrop-blur-md transition-transform active:scale-95 ${bookmarked ? "text-primary" : "text-white"}`}
+                    onClick={() => {
+                        if (!session) return requireLogin();
+                        if (bookmarkMutation.isPending) return;
+                        bookmarkMutation.mutate();
+                    }}
+                >
+                    <Bookmark className={`h-6 w-6 ${bookmarked ? "fill-current" : ""}`} />
+                </button>
+                <div className="text-center text-xs font-medium leading-tight text-white/70">
+                    Save
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex items-center gap-4 py-4 border-y border-border/50 my-6 text-muted-foreground">
             <Button
@@ -91,7 +143,7 @@ export function EngagementBar({ updateId }: { updateId: string }) {
                 size="sm"
                 className={`hover:bg-red-500/10 transition-colors ${liked ? "text-red-500 hover:text-red-600" : ""}`}
                 onClick={() => {
-                    if (!session) return alert("Please sign in to like this.");
+                    if (!session) return requireLogin();
                     if (likeMutation.isPending) return;
                     likeMutation.mutate();
                 }}
@@ -106,7 +158,7 @@ export function EngagementBar({ updateId }: { updateId: string }) {
                 size="sm"
                 className={`hover:bg-primary/10 transition-colors ${bookmarked ? "text-primary hover:text-primary/80" : ""}`}
                 onClick={() => {
-                    if (!session) return alert("Please sign in to bookmark this.");
+                    if (!session) return requireLogin();
                     if (bookmarkMutation.isPending) return;
                     bookmarkMutation.mutate();
                 }}
