@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useSession } from "@/lib/auth";
 import { getSeenUpdateIds } from "@/lib/local-seen";
 import { useQueryClient } from "@tanstack/react-query";
+import { buildNavigationContextKey, saveNavigationSlugs } from "@/lib/navigation-memory";
 
 const containerVariants: any = {
   hidden: { opacity: 0 },
@@ -98,6 +99,31 @@ export function UpdateList({ updates, isLoading, listContext, returnDate, filter
     }
   }, [queryClient, session?.user?.id]);
 
+  const guestSeenSet = new Set(guestSeenUpdateIds);
+  const effectiveUpdates = (updates ?? []).map((update) => ({
+    ...update,
+    isSeen: (update as any).isSeen || (!session && guestSeenSet.has(update.id))
+  }));
+
+  const filteredUpdates = showUnseenOnly ? effectiveUpdates.filter(u => !(u as any).isSeen) : effectiveUpdates;
+  const visibleUpdates = filteredUpdates.slice(0, displayCount);
+  const hasMore = displayCount < filteredUpdates.length;
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !updates?.length) return;
+
+    const contextKey = buildNavigationContextKey({
+      listContext,
+      returnDate,
+      filterStorageKey,
+    });
+
+    saveNavigationSlugs(
+      contextKey,
+      filteredUpdates.map((update) => update.slug)
+    );
+  }, [filteredUpdates, filterStorageKey, listContext, returnDate, updates]);
+
   if (isLoading) {
     return (
       <div className="grid gap-6 md:grid-cols-2">
@@ -117,16 +143,6 @@ export function UpdateList({ updates, isLoading, listContext, returnDate, filter
       </div>
     );
   }
-
-  const guestSeenSet = new Set(guestSeenUpdateIds);
-  const effectiveUpdates = updates.map((update) => ({
-    ...update,
-    isSeen: (update as any).isSeen || (!session && guestSeenSet.has(update.id))
-  }));
-
-  const filteredUpdates = showUnseenOnly ? effectiveUpdates.filter(u => !(u as any).isSeen) : effectiveUpdates;
-  const visibleUpdates = filteredUpdates.slice(0, displayCount);
-  const hasMore = displayCount < filteredUpdates.length;
 
   return (
     <div className="space-y-8">

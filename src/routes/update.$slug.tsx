@@ -23,6 +23,7 @@ import { CommentsSection } from "@/components/comments-section";
 import { recordView } from "@/server/engagement";
 import { useSession } from "@/lib/auth";
 import { markUpdateAsSeen } from "@/lib/local-seen";
+import { buildNavigationContextKey, getNavigationSlugs } from "@/lib/navigation-memory";
 
 function markUpdateSeenInCachedLists(queryClient: ReturnType<typeof useQueryClient>, updateId: string) {
   queryClient.setQueriesData({ queryKey: ["updates"] }, (existing) => {
@@ -107,23 +108,37 @@ function UpdateDetailPage() {
 
   const prevSlug = loaderData.adjacent?.prevSlug || null;
   const nextSlug = loaderData.adjacent?.nextSlug || null;
+  const navigationContextKey = buildNavigationContextKey({
+    listContext: list,
+    returnDate: date,
+    filterStorageKey: !list && !date ? "home" : undefined,
+  });
+  const storedNavigationSlugs = getNavigationSlugs(navigationContextKey);
+  const storedNavigationIndex = storedNavigationSlugs.indexOf(slug);
+  const computedPrevSlug = storedNavigationIndex > 0 ? storedNavigationSlugs[storedNavigationIndex - 1] : null;
+  const computedNextSlug =
+    storedNavigationIndex >= 0 && storedNavigationIndex < storedNavigationSlugs.length - 1
+      ? storedNavigationSlugs[storedNavigationIndex + 1]
+      : null;
+  const activePrevSlug = computedPrevSlug ?? prevSlug;
+  const activeNextSlug = computedNextSlug ?? nextSlug;
 
   useEffect(() => {
     const search = { ...(list ? { list } : {}), ...(date ? { date } : {}) };
-    if (nextSlug) router.preloadRoute({ to: `/update/${nextSlug}`, search }).catch(() => { });
-    if (prevSlug) router.preloadRoute({ to: `/update/${prevSlug}`, search }).catch(() => { });
-  }, [nextSlug, prevSlug, router, list, date]);
+    if (activeNextSlug) router.preloadRoute({ to: `/update/${activeNextSlug}`, search }).catch(() => { });
+    if (activePrevSlug) router.preloadRoute({ to: `/update/${activePrevSlug}`, search }).catch(() => { });
+  }, [activeNextSlug, activePrevSlug, router, list, date]);
 
   const goToNext = () => {
-    if (!nextSlug) return;
+    if (!activeNextSlug) return;
     setDirection(1);
-    navigate({ to: `/update/${nextSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
+    navigate({ to: `/update/${activeNextSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
   };
 
   const goToPrev = () => {
-    if (!prevSlug) return;
+    if (!activePrevSlug) return;
     setDirection(-1);
-    navigate({ to: `/update/${prevSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
+    navigate({ to: `/update/${activePrevSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
   };
 
   const handlers = useSwipeable({
@@ -233,7 +248,7 @@ function UpdateDetailPage() {
             <button
               type="button"
               onClick={goToPrev}
-              disabled={!prevSlug}
+              disabled={!activePrevSlug}
               className="inline-flex items-center gap-1 disabled:opacity-30"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -245,7 +260,7 @@ function UpdateDetailPage() {
             <button
               type="button"
               onClick={goToNext}
-              disabled={!nextSlug}
+              disabled={!activeNextSlug}
               className="inline-flex items-center gap-1 disabled:opacity-30"
             >
               Next
@@ -255,10 +270,10 @@ function UpdateDetailPage() {
 
           <div className="mb-8 hidden w-full items-center justify-between gap-4 sm:flex">
             <div className="flex-1">
-              {prevSlug ? (
+              {activePrevSlug ? (
                 <Link
                   to="/update/$slug"
-                  params={{ slug: prevSlug }}
+                  params={{ slug: activePrevSlug }}
                   search={{ ...(list ? { list } : {}), ...(date ? { date } : {}) }}
                   onClick={() => setDirection(-1)}
                   className="group relative flex flex-col items-start gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden"
@@ -278,10 +293,10 @@ function UpdateDetailPage() {
             </div>
 
             <div className="flex-1">
-              {nextSlug ? (
+              {activeNextSlug ? (
                 <Link
                   to="/update/$slug"
-                  params={{ slug: nextSlug }}
+                  params={{ slug: activeNextSlug }}
                   search={{ ...(list ? { list } : {}), ...(date ? { date } : {}) }}
                   onClick={() => setDirection(1)}
                   className="group relative flex flex-col items-end gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden text-right"
