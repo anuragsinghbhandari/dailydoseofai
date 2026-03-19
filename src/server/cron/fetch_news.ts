@@ -42,6 +42,11 @@ const GIANTS = [
 const HYPE = [
     "release",
     "released",
+    "launch",
+    "launched",
+    "announce",
+    "announced",
+    "announcing",
     "model",
     "llm",
     "paper",
@@ -50,6 +55,43 @@ const HYPE = [
     "open weights",
     "benchmark",
     "sota"
+];
+
+const LOW_SIGNAL = [
+    "podcast",
+    "webinar",
+    "job",
+    "hiring",
+    "newsletter",
+    "opinion",
+    "sponsored",
+    "event",
+    "course",
+    "tutorial"
+];
+
+const TRUSTED_GOOGLE_NEWS_SEARCHES = [
+    {
+        label: "Official AI labs",
+        query: "(site:openai.com OR site:anthropic.com OR site:deepmind.google OR site:blog.google OR site:ai.meta.com OR site:huggingface.co/blog OR site:mistral.ai/news OR site:nvidia.com) (AI OR model OR API OR release OR research) when:3d",
+        category: "Official Release",
+        maxHours: 72,
+        maxItems: 10,
+    },
+    {
+        label: "Major AI coverage",
+        query: "(site:techcrunch.com OR site:theverge.com OR site:venturebeat.com OR site:arstechnica.com OR site:mit.edu OR site:semafor.com) (OpenAI OR Anthropic OR DeepMind OR Google AI OR Meta AI OR Hugging Face OR Nvidia OR Mistral OR AI model) when:2d",
+        category: "AI News",
+        maxHours: 48,
+        maxItems: 12,
+    },
+    {
+        label: "Developer tooling",
+        query: "(site:huggingface.co/blog OR site:openai.com OR site:anthropic.com OR site:blog.google OR site:mistral.ai/news) (API OR SDK OR agent OR developer OR open source) when:3d",
+        category: "Developer Update",
+        maxHours: 72,
+        maxItems: 8,
+    }
 ];
 
 function isFomoNews(title: string, summary: string, loose = false) {
@@ -64,6 +106,11 @@ function isFomoNews(title: string, summary: string, loose = false) {
     if (loose) return hasGiant || strongMatch || hasHype;
 
     return (hasGiant && hasHype) || strongMatch;
+}
+
+function isLowSignalNews(title: string, summary: string) {
+    const content = (title + " " + summary).toLowerCase();
+    return LOW_SIGNAL.some(term => content.includes(term));
 }
 
 function isRecent(date?: string, maxHours = 24) {
@@ -103,12 +150,49 @@ function generateSlug(title: string) {
     return `${base}-${hash}`;
 }
 
-async function fetchGoogleNews() {
-    console.log("Fetching Google News (AI)...");
+function normalizeTitle(title: string) {
+    return title
+        .toLowerCase()
+        .replace(/^\[[^\]]+\]\s*/, "")
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
 
-    const url =
-        "https://news.google.com/rss/search?q=AI+OR+Artificial+Intelligence+OR+Machine+Learning+when:1d&hl=en-US&gl=US&ceid=US:en";
+function buildUpdate(item: {
+    title: string;
+    summary: string;
+    link: string;
+    category: string;
+    titlePrefix?: string;
+}) {
+    const normalizedTitle = item.titlePrefix
+        ? `${item.titlePrefix}${item.title}`
+        : item.title;
 
+    return {
+        title: normalizedTitle,
+        slug: generateSlug(normalizedTitle),
+        summary: truncate(item.summary, 500),
+        content: `Source: ${item.link}`,
+        why_it_matters: "Pending review",
+        category: item.category,
+        source_url: item.link,
+        impact_score: 0,
+        published: true
+    };
+}
+
+async function fetchGoogleNewsSearch(config: {
+    label: string;
+    query: string;
+    category: string;
+    maxHours: number;
+    maxItems: number;
+}) {
+    console.log(`Fetching Google News (${config.label})...`);
+
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(config.query)}&hl=en-US&gl=US&ceid=US:en`;
     const items: any[] = [];
 
     try {
@@ -116,30 +200,35 @@ async function fetchGoogleNews() {
 
         for (const item of feed.items) {
             if (!item.title || !item.link) continue;
-            if (!isRecent(item.isoDate || item.pubDate, 48)) continue;
+            if (!isRecent(item.isoDate || item.pubDate, config.maxHours)) continue;
 
             const summary = extractSummary(item);
+            if (isLowSignalNews(item.title, summary)) continue;
 
             if (isFomoNews(item.title, summary)) {
-                items.push({
+                items.push(buildUpdate({
                     title: item.title,
-                    slug: generateSlug(item.title),
-                    summary: truncate(summary, 500),
-                    content: `Source: ${item.link}`,
-                    why_it_matters: "Pending review",
-                    category: "AI News",
-                    source_url: item.link,
-                    impact_score: 0,
-                    published: true
-                });
+                    summary,
+                    link: item.link,
+                    category: config.category
+                }));
             }
         }
     } catch (err) {
-        console.error("Google News error:", err);
+        console.error(`Google News (${config.label}) error:`, err);
     }
 
-    console.log(`Google News AI items extracted: ${items.length}`);
-    return items;
+    const finalItems = items.slice(0, config.maxItems);
+    console.log(`Google News (${config.label}) items extracted: ${finalItems.length}`);
+    return finalItems;
+}
+
+async function fetchTrustedGoogleNews() {
+    const batches = await Promise.all(
+        TRUSTED_GOOGLE_NEWS_SEARCHES.map(config => fetchGoogleNewsSearch(config))
+    );
+
+    return batches.flat();
 }
 
 async function fetchTechCrunch() {
@@ -158,19 +247,15 @@ async function fetchTechCrunch() {
             if (!isRecent(item.isoDate || item.pubDate)) continue;
 
             const summary = extractSummary(item);
+            if (isLowSignalNews(item.title, summary)) continue;
 
             if (isFomoNews(item.title, summary, true)) {
-                items.push({
+                items.push(buildUpdate({
                     title: item.title,
-                    slug: generateSlug(item.title),
-                    summary: truncate(summary, 500),
-                    content: `Source: ${item.link}`,
-                    why_it_matters: "Pending review",
-                    category: "Startup Launch",
-                    source_url: item.link,
-                    impact_score: 0,
-                    published: true
-                });
+                    summary,
+                    link: item.link,
+                    category: "Startup Launch"
+                }));
             }
         }
     } catch (err) {
@@ -197,19 +282,16 @@ async function fetchArxiv() {
             if (!isRecent(item.isoDate || item.pubDate, 96)) continue;
 
             const summary = extractSummary(item);
+            if (isLowSignalNews(item.title, summary)) continue;
 
             if (isFomoNews(item.title, summary, true)) {
-                items.push({
-                    title: `[Paper] ${item.title}`,
-                    slug: generateSlug(item.title),
-                    summary: truncate(summary, 500),
-                    content: `Source: ${item.link}`,
-                    why_it_matters: "Pending review",
+                items.push(buildUpdate({
+                    title: item.title,
+                    summary,
+                    link: item.link,
                     category: "Research Paper",
-                    source_url: item.link,
-                    impact_score: 0,
-                    published: true
-                });
+                    titlePrefix: "[Paper] "
+                }));
             }
         }
     } catch (err) {
@@ -410,28 +492,19 @@ Return JSON:
 
 async function fetchNews() {
     const [
-        google,
+        trustedGoogle,
         techcrunch,
-        arxiv,
-        github,
-        hn,
-        reddit
+        arxiv
     ] = await Promise.all([
-        fetchGoogleNews(),
+        fetchTrustedGoogleNews(),
         fetchTechCrunch(),
-        fetchArxiv(),
-        fetchGitHub(),
-        fetchHackerNews(),
-        fetchReddit()
+        fetchArxiv()
     ]);
 
     const collected = [
-        ...google,
+        ...trustedGoogle,
         ...techcrunch,
-        ...arxiv,
-        ...github,
-        ...hn,
-        ...reddit
+        ...arxiv
     ];
 
     console.log(`Total items fetched before dedup: ${collected.length}`);
@@ -449,12 +522,20 @@ async function fetchNews() {
         .from(updates)
         .limit(2000);
 
-    const titles = new Set(existing.map(e => e.title));
+    const titles = new Set(existing.map(e => normalizeTitle(e.title)));
     const urls = new Set(existing.map(e => e.source_url));
+    const seenTitles = new Set<string>();
+    const seenUrls = new Set<string>();
 
-    const unique = collected.filter(
-        u => !titles.has(u.title) && !urls.has(u.source_url)
-    );
+    const unique = collected.filter(u => {
+        const normalizedTitle = normalizeTitle(u.title);
+        if (titles.has(normalizedTitle) || urls.has(u.source_url)) return false;
+        if (seenTitles.has(normalizedTitle) || seenUrls.has(u.source_url)) return false;
+
+        seenTitles.add(normalizedTitle);
+        seenUrls.add(u.source_url);
+        return true;
+    });
 
     if (!unique.length) {
         console.log(

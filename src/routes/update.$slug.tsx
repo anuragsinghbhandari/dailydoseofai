@@ -182,12 +182,12 @@ function UpdateDetailPage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
       <div className="mb-8">
         <Link
-          to={date ? "/date/$date" : list === "must-read" ? "/must-read" : list === "bookmarks" ? "/bookmarks" : "/"}
+          to={date ? "/date/$date" : list === "bookmarks" ? "/bookmarks" : "/"}
           params={date ? { date } : undefined}
           className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to {date ? "updates" : list === "must-read" ? "Must Reads" : list === "bookmarks" ? "Bookmarks" : "updates"}
+          Back to {date ? "updates" : list === "bookmarks" ? "Bookmarks" : "updates"}
         </Link>
       </div>
 
