@@ -12,8 +12,10 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ initialViewer }: SiteHeaderProps) {
-    const { data: clientSession } = useSession();
-    const session = clientSession ?? initialViewer?.session ?? null;
+    const { data: clientSession, isPending } = useSession();
+    const session = isPending
+        ? initialViewer?.session ?? null
+        : clientSession ?? null;
     const streakQuery = useQuery({
         queryKey: ["user", "streak"],
         queryFn: () => getUserStreak(),

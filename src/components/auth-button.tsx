@@ -1,5 +1,6 @@
 import { signIn, signOut, useSession } from "@/lib/auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { Flame } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -19,8 +20,13 @@ interface AuthButtonProps {
 
 export function AuthButton({ initialViewer }: AuthButtonProps) {
     const [mounted, setMounted] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const { data: clientSession, isPending } = useSession();
-    const session = clientSession ?? initialViewer?.session ?? null;
+    const queryClient = useQueryClient();
+    const router = useRouter();
+    const session = isPending
+        ? initialViewer?.session ?? null
+        : clientSession ?? null;
     const streakQuery = useQuery({
         queryKey: ["user", "streak"],
         queryFn: () => getUserStreak(),
@@ -38,6 +44,18 @@ export function AuthButton({ initialViewer }: AuthButtonProps) {
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    async function handleLogout() {
+        setIsLoggingOut(true);
+
+        try {
+            await signOut();
+            queryClient.removeQueries({ queryKey: ["user", "streak"] });
+            await router.invalidate();
+        } finally {
+            setIsLoggingOut(false);
+        }
+    }
 
     // Don't render auth UI during SSR - prevents HTTPError from useSession fetch
     if (!mounted && !session) {
@@ -73,7 +91,13 @@ export function AuthButton({ initialViewer }: AuthButtonProps) {
                             {streakQuery.data?.streak ?? 0} day{(streakQuery.data?.streak ?? 0) === 1 ? "" : "s"}
                         </span>
                     </div>
-                    <DropdownMenuItem className="cursor-pointer" onClick={() => signOut()}>
+                    <DropdownMenuItem
+                        className="cursor-pointer"
+                        disabled={isLoggingOut}
+                        onClick={() => {
+                            void handleLogout();
+                        }}
+                    >
                         Log out
                     </DropdownMenuItem>
                 </DropdownMenuContent>
