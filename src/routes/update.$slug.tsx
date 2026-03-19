@@ -134,11 +134,17 @@ function UpdateDetailPage() {
 
   useEffect(() => {
     if (update?.id) {
-      if (session) {
+        if (session) {
         markUpdateSeenInCachedLists(queryClient, update.id);
         (recordView as any)({ data: { updateId: update.id } })
-          .then(() => {
+          .then((result: any) => {
             markUpdateSeenInCachedLists(queryClient, update.id);
+            if (result?.viewed) {
+              queryClient.setQueryData(["user", "streak"], {
+                streak: result.streak ?? 0,
+                lastActiveDate: result.lastActiveDate ?? null,
+              });
+            }
           })
           .catch(console.error);
       } else {

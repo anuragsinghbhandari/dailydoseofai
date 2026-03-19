@@ -1,4 +1,6 @@
 import { signIn, signOut, useSession } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { Flame } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
@@ -8,10 +10,17 @@ import {
     DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { useState, useEffect } from "react";
+import { getUserStreak } from "@/server/engagement";
 
 export function AuthButton() {
     const [mounted, setMounted] = useState(false);
     const { data: session, isPending } = useSession();
+    const streakQuery = useQuery({
+        queryKey: ["user", "streak"],
+        queryFn: () => getUserStreak(),
+        enabled: !!session,
+        staleTime: 60 * 1000,
+    });
 
     useEffect(() => {
         setMounted(true);
@@ -43,6 +52,13 @@ export function AuthButton() {
                         <p className="text-xs leading-none text-muted-foreground">
                             {session.user.email}
                         </p>
+                    </div>
+                    <div className="flex items-center justify-between px-2 py-2 border-b text-sm">
+                        <span className="text-muted-foreground">Current streak</span>
+                        <span className="inline-flex items-center gap-1 font-medium">
+                            <Flame className="h-4 w-4 text-orange-500" />
+                            {streakQuery.data?.streak ?? 0} day{(streakQuery.data?.streak ?? 0) === 1 ? "" : "s"}
+                        </span>
                     </div>
                     <DropdownMenuItem className="cursor-pointer" onClick={() => signOut()}>
                         Log out

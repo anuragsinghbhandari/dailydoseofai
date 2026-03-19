@@ -11,6 +11,56 @@ async function getSession() {
     return await auth.api.getSession({ headers: req.headers });
 }
 
+function startOfUtcDay(value: Date) {
+    return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+}
+
+async function updateUserStreak(userId: string) {
+    const now = new Date();
+    const userRows = await db
+        .select({
+            streak: user.streak,
+            lastActiveDate: user.last_active_date,
+        })
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+
+    const currentUser = userRows[0];
+    if (!currentUser) {
+        return { streak: 0, lastActiveDate: null };
+    }
+
+    const today = startOfUtcDay(now);
+    const lastActiveDate = currentUser.lastActiveDate ? new Date(currentUser.lastActiveDate) : null;
+    const lastActiveDay = lastActiveDate ? startOfUtcDay(lastActiveDate) : null;
+
+    if (lastActiveDay === today) {
+        return {
+            streak: currentUser.streak ?? 0,
+            lastActiveDate: currentUser.lastActiveDate,
+        };
+    }
+
+    const yesterday = today - 24 * 60 * 60 * 1000;
+    const nextStreak = lastActiveDay === yesterday ? (currentUser.streak ?? 0) + 1 : 1;
+
+    const updatedRows = await db
+        .update(user)
+        .set({
+            streak: nextStreak,
+            last_active_date: now,
+            updatedAt: now,
+        })
+        .where(eq(user.id, userId))
+        .returning({
+            streak: user.streak,
+            lastActiveDate: user.last_active_date,
+        });
+
+    return updatedRows[0] ?? { streak: nextStreak, lastActiveDate: now };
+}
+
 export const toggleLike = createServerFn({ method: "POST" })
     .handler(async (ctx: any) => {
         const { updateId } = ctx.data as { updateId: string };
@@ -77,11 +127,34 @@ export const recordView = createServerFn({ method: "POST" })
         const session = await getSession();
         if (!session) return { viewed: false };
 
+        const streakState = await updateUserStreak(session.user.id);
+
         const existing = await db.select().from(user_views).where(and(eq(user_views.user_id, session.user.id), eq(user_views.update_id, updateId)));
         if (existing.length === 0) {
             await db.insert(user_views).values({ user_id: session.user.id, update_id: updateId });
         }
-        return { viewed: true };
+        return {
+            viewed: true,
+            streak: streakState.streak,
+            lastActiveDate: streakState.lastActiveDate,
+        };
+    });
+
+export const getUserStreak = createServerFn({ method: "GET" })
+    .handler(async () => {
+        const session = await getSession();
+        if (!session) return null;
+
+        const rows = await db
+            .select({
+                streak: user.streak,
+                lastActiveDate: user.last_active_date,
+            })
+            .from(user)
+            .where(eq(user.id, session.user.id))
+            .limit(1);
+
+        return rows[0] ?? { streak: 0, lastActiveDate: null };
     });
 
 export const getUserGlobalEngagement = createServerFn({ method: "GET" })
