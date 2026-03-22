@@ -322,7 +322,6 @@ function UpdateDetailPage() {
                   onClick={() => setDirection(-1)}
                   className="group relative flex flex-col items-start gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
                     <ChevronLeft className="h-3.5 w-3.5 mr-1" />
                     Previous Article
@@ -345,7 +344,6 @@ function UpdateDetailPage() {
                   onClick={() => setDirection(1)}
                   className="group relative flex flex-col items-end gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden text-right"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-l from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
                     Next Article
                     <ChevronRight className="h-3.5 w-3.5 ml-1" />

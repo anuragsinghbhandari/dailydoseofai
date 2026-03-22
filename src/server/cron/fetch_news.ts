@@ -94,6 +94,11 @@ const TRUSTED_GOOGLE_NEWS_SEARCHES = [
     }
 ];
 
+const MAX_GITHUB_ITEMS = 3;
+const MAX_HN_ITEMS = 6;
+const MAX_REDDIT_ITEMS = 6;
+const SUMMARIZE_CONCURRENCY = 4;
+
 function isFomoNews(title: string, summary: string, loose = false) {
     const content = (title + " " + summary).toLowerCase();
 
@@ -338,7 +343,7 @@ async function fetchGitHub() {
         console.error("GitHub error:", err);
     }
 
-    const finalItems = items.slice(0, 3);
+    const finalItems = items.slice(0, MAX_GITHUB_ITEMS);
 
     console.log(`GitHub Repos extracted: ${finalItems.length}`);
     return finalItems;
@@ -381,8 +386,9 @@ async function fetchHackerNews() {
         console.error("HN error:", err);
     }
 
-    console.log(`HackerNews items extracted: ${items.length}`);
-    return items;
+    const finalItems = items.slice(0, MAX_HN_ITEMS);
+    console.log(`HackerNews items extracted: ${finalItems.length}`);
+    return finalItems;
 }
 
 async function fetchReddit() {
@@ -450,9 +456,10 @@ async function fetchReddit() {
         console.error("Error fetching Reddit:", e);
     }
 
-    console.log(`Reddit items extracted: ${items.length}`);
+    const finalItems = items.slice(0, MAX_REDDIT_ITEMS);
+    console.log(`Reddit items extracted: ${finalItems.length}`);
 
-    return items;
+    return finalItems;
 }
 
 async function summarize(update: any) {
@@ -490,21 +497,45 @@ Return JSON:
     return update;
 }
 
+async function summarizeInBatches(items: any[]) {
+    for (let i = 0; i < items.length; i += SUMMARIZE_CONCURRENCY) {
+        const batch = items.slice(i, i + SUMMARIZE_CONCURRENCY);
+
+        await Promise.all(
+            batch.map((item, batchIndex) => {
+                console.log(
+                    `Summarizing ${i + batchIndex + 1}/${items.length}: ${item.title}`
+                );
+                return summarize(item);
+            })
+        );
+    }
+}
+
 async function fetchNews() {
     const [
         trustedGoogle,
         techcrunch,
-        arxiv
+        arxiv,
+        github,
+        hackerNews,
+        reddit
     ] = await Promise.all([
         fetchTrustedGoogleNews(),
         fetchTechCrunch(),
-        fetchArxiv()
+        fetchArxiv(),
+        fetchGitHub(),
+        fetchHackerNews(),
+        fetchReddit()
     ]);
 
     const collected = [
         ...trustedGoogle,
         ...techcrunch,
-        ...arxiv
+        ...arxiv,
+        ...github,
+        ...hackerNews,
+        ...reddit
     ];
 
     console.log(`Total items fetched before dedup: ${collected.length}`);
@@ -548,10 +579,7 @@ async function fetchNews() {
         `Processing ${unique.length} articles with Gemini AI for summarization...`
     );
 
-    for (let i = 0; i < unique.length; i++) {
-        console.log(`Summarizing ${i + 1}/${unique.length}: ${unique[i].title}`);
-        await summarize(unique[i]);
-    }
+    await summarizeInBatches(unique);
 
     const inserted = await db
         .insert(updates)

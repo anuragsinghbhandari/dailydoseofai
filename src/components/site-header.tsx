@@ -31,10 +31,10 @@ export function SiteHeader({ initialViewer }: SiteHeaderProps) {
     });
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/40 backdrop-blur-xl supports-[backdrop-filter]:bg-background/20 transition-all">
+        <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 transition-all">
             <div className="container flex h-16 items-center gap-6">
                 <Link to="/" className="flex items-center space-x-2">
-                    <span className="font-heading font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500">
+                    <span className="font-heading font-bold text-xl tracking-[0.18em] uppercase text-foreground">
                         AI Dose
                     </span>
                 </Link>

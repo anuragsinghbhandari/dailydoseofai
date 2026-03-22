@@ -6,10 +6,9 @@ import {
   getMonthUpdatesSummary
 } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { motion, AnimatePresence } from "framer-motion";
-import { useLayoutEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
 import { createSeoHead } from "@/lib/seo";
 
@@ -101,7 +100,7 @@ function HomePage() {
   const loaderData = Route.useLoaderData();
   const [isRestoringFeedState, setIsRestoringFeedState] = useState(false);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const shouldRestore = consumeScrollRestoreFlag("/");
     if (!shouldRestore) return;
 
@@ -138,37 +137,45 @@ function HomePage() {
     staleTime: 5 * 60 * 1000
   });
 
+  const weekCounts = useMemo(
+    () => groupUpdatesByDate(weekQuery.data ?? []),
+    [weekQuery.data]
+  );
+
+  const monthCounts = useMemo(
+    () => groupUpdatesByDate(monthQuery.data ?? []),
+    [monthQuery.data]
+  );
+
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Premium Hero Section */}
-      <section className="relative w-full py-24 md:py-32 lg:py-48 overflow-hidden border-b border-border/40">
-        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:60px_60px]" />
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] opacity-60 dark:opacity-30 pointer-events-none" />
-        <div className="absolute top-40 -right-40 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] opacity-60 dark:opacity-30 pointer-events-none" />
+      <section className="relative w-full overflow-hidden border-b border-border/50 bg-[linear-gradient(180deg,rgba(255,252,246,0.98),rgba(244,237,227,0.92))] py-24 md:py-28 lg:py-36 dark:bg-[linear-gradient(180deg,rgba(24,18,15,0.98),rgba(18,14,12,0.94))]">
+        <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(124,89,64,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(124,89,64,0.08)_1px,transparent_1px)] [background-size:44px_44px]" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-[radial-gradient(circle_at_bottom,rgba(183,94,33,0.14),transparent_65%)] pointer-events-none" />
 
         <div className="container relative z-10">
-          <div className="flex flex-col items-center space-y-10 text-center max-w-4xl mx-auto">
+          <div className="mx-auto flex max-w-4xl flex-col items-center space-y-8 text-center">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-md shadow-sm"
+              className="inline-flex items-center rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm font-medium text-foreground shadow-sm"
             >
-              <span className="flex h-2 w-2 rounded-full bg-primary mr-2 animate-pulse"></span>
-              The latest AI updates
+              <span className="mr-2 flex h-2 w-2 rounded-full bg-primary"></span>
+              Daily AI briefing
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
-              className="space-y-6"
+              className="space-y-5"
             >
-              <h1 className="text-5xl font-heading font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl leading-[1.1]">
-                Your <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary via-indigo-400 to-purple-400">Daily Dose</span> of AI News
+              <h1 className="text-5xl font-heading font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl leading-[1.05] text-balance">
+                The signal in AI, without the noise
               </h1>
-              <p className="mx-auto max-w-2xl text-muted-foreground md:text-xl/relaxed lg:text-2xl/relaxed leading-relaxed font-light">
-                Catch up on the world's most important AI breakthroughs in 3 minutes or less. Stay ahead of the curve.
+              <p className="mx-auto max-w-2xl text-muted-foreground md:text-xl/relaxed lg:text-2xl/relaxed leading-relaxed">
+                A sharper daily read on launches, research, tooling, and market moves that actually matter.
               </p>
             </motion.div>
           </div>
@@ -210,7 +217,7 @@ function HomePage() {
               className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4"
             >
               {getCurrentWeekDays().map((day, idx) => {
-                const count = groupUpdatesByDate(weekQuery.data ?? [])[day.dateStr] || 0;
+                const count = weekCounts[day.dateStr] || 0;
                 return (
                   <motion.div
                     key={day.dateStr}
@@ -221,7 +228,7 @@ function HomePage() {
                     <Link
                       to="/date/$date"
                       params={{ date: day.dateStr }}
-                      className={`flex flex-col items-center justify-center p-4 h-full rounded-xl border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 cursor-pointer hover:-translate-y-1' : 'bg-muted/10 opacity-70 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                    className={`flex flex-col items-center justify-center p-4 h-full rounded-xl border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 cursor-pointer hover:-translate-y-1' : 'bg-muted/20 opacity-70 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
                     >
                       <span className="text-sm text-muted-foreground uppercase">{day.dayName}</span>
                       <span className="text-3xl font-bold mt-1">{day.dateNum}</span>
@@ -253,18 +260,18 @@ function HomePage() {
               ))}
               {getCurrentMonthDays().map((day, i) => {
                 if (!day) return <div key={`empty-${i}`} className="p-3" />;
-                const count = groupUpdatesByDate(monthQuery.data ?? [])[day.dateStr] || 0;
+                const count = monthCounts[day.dateStr] || 0;
                 return (
                   <Link
                     key={day.dateStr}
                     to="/date/$date"
                     params={{ date: day.dateStr }}
-                    className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 relative overflow-hidden cursor-pointer' : 'bg-muted/10 opacity-60 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                    className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 relative overflow-hidden cursor-pointer' : 'bg-muted/20 opacity-60 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
                   >
                     {count > 0 && <div className="absolute inset-x-0 bottom-0 h-1 bg-primary/20" />}
                     <span className="text-lg font-bold">{day.dateNum}</span>
                     {count > 0 ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0 shadow-[0_0_8px_rgba(var(--primary),0.8)]" title={`${count} updates`} />
+                      <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" title={`${count} updates`} />
                     ) : (
                       <span className="w-1.5 h-1.5 rounded-full bg-transparent mt-2 flex-shrink-0" />
                     )}

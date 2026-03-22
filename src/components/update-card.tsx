@@ -3,10 +3,8 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { type Update } from "@/server/schema";
 import { ImpactScore } from "./impact-score";
 import { CategoryBadge } from "./category-badge";
@@ -34,8 +32,8 @@ export function UpdateCard({ update, featured, listContext, returnDate }: Update
       }}
       className={`block group h-full relative ${isSeen ? 'opacity-70 hover:opacity-100' : ''}`}
     >
-      <div className={`absolute -inset-0.5 bg-gradient-to-r from-primary to-purple-600 rounded-xl blur opacity-0 group-hover:opacity-20 transition duration-500 ${featured ? 'opacity-20 group-hover:opacity-40' : ''}`}></div>
-      <Card className={`relative h-full transition-all duration-300 transform group-hover:-translate-y-1 group-hover:scale-[1.01] hover:shadow-2xl hover:border-primary/50 flex flex-col bg-card/80 backdrop-blur-sm ${featured ? 'border-primary/30 shadow-lg' : ''}`}>
+      <Card className={`relative h-full overflow-hidden transition-all duration-300 transform group-hover:-translate-y-1 hover:shadow-xl hover:border-primary/40 flex flex-col bg-card ${featured ? 'border-primary/30 shadow-lg' : ''}`}>
+        <div className={`absolute inset-x-0 top-0 h-1 ${featured ? 'bg-primary/70' : 'bg-border/70'} transition-colors group-hover:bg-primary/70`} />
         <CardHeader className="flex-none pb-4">
           <div className="flex items-center justify-between gap-2 mb-3">
             <CategoryBadge category={update.category} />
