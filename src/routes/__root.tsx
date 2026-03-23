@@ -4,7 +4,8 @@ import {
   HeadContent,
   Scripts,
   createRootRoute,
-  Link
+  Link,
+  useLocation
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -14,6 +15,15 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "@/index.css?url";
 import { getViewerState } from "@/server/auth-state";
 import { SITE_NAME } from "@/lib/seo";
+
+declare global {
+  interface Window {
+    dataLayer: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+const GOOGLE_ANALYTICS_ID = "G-MWC6DGEDY4";
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -61,15 +71,16 @@ function RootLayout() {
       <head>
         <script
           async
-          src="https://www.googletagmanager.com/gtag/js?id=G-MWC6DGEDY4"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}
         />
         <script
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
+              window.gtag = gtag;
               gtag('js', new Date());
-              gtag('config', 'G-MWC6DGEDY4');
+              gtag('config', '${GOOGLE_ANALYTICS_ID}', { send_page_view: false });
             `
           }}
         />
@@ -77,6 +88,7 @@ function RootLayout() {
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
+          <GoogleAnalyticsPageTracker />
           <ThemeProvider defaultTheme="system">
             <div className="relative flex min-h-screen flex-col bg-background">
               <SiteHeader initialViewer={viewer} />
@@ -92,4 +104,22 @@ function RootLayout() {
       </body>
     </html>
   );
+}
+
+function GoogleAnalyticsPageTracker() {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof window.gtag !== "function") {
+      return;
+    }
+
+    window.gtag("config", GOOGLE_ANALYTICS_ID, {
+      page_path: `${location.pathname}${location.search}${location.hash}`,
+      page_location: window.location.href,
+      page_title: document.title,
+    });
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
 }
