@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site-header";
+import { StreakCelebrationOverlay } from "@/components/streak-celebration-overlay";
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@vercel/analytics/react";
 import appCss from "@/index.css?url";
@@ -90,6 +91,7 @@ function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GoogleAnalyticsPageTracker />
           <ThemeProvider defaultTheme="system">
+            <StreakCelebrationOverlay initialViewer={viewer} />
             <div className="relative flex min-h-screen flex-col bg-background">
               <SiteHeader initialViewer={viewer} />
               <main className="flex-1">

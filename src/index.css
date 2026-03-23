@@ -103,3 +103,44 @@
     transform: scale(1) rotate(0deg);
   }
 }
+
+@keyframes streak-screen-glow {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes streak-badge-burst {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-18px) scale(0.84);
+  }
+  18% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px) scale(0.98);
+  }
+}
+
+@keyframes streak-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(0.7);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--streak-drift, 0px), 110vh, 0) rotate(540deg) scale(1);
+  }
+}
