@@ -69,3 +69,37 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes streak-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(249, 115, 22, 0);
+  }
+  30% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0.9rem rgba(249, 115, 22, 0.28);
+  }
+  60% {
+    transform: scale(0.98);
+    box-shadow: 0 0 0.45rem rgba(249, 115, 22, 0.16);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(249, 115, 22, 0);
+  }
+}
+
+@keyframes streak-flare {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.22) rotate(-10deg);
+  }
+  55% {
+    transform: scale(0.94) rotate(8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}

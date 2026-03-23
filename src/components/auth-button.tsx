@@ -13,6 +13,7 @@ import {
 import { useState, useEffect } from "react";
 import { getUserStreak } from "@/server/engagement";
 import type { ViewerState } from "@/server/auth-state";
+import { useStreakCelebration } from "@/hooks/use-streak-celebration";
 
 interface AuthButtonProps {
     initialViewer?: ViewerState | null;
@@ -40,6 +41,8 @@ export function AuthButton({ initialViewer }: AuthButtonProps) {
         staleTime: 5 * 60 * 1000,
         refetchOnMount: false,
     });
+    const streak = streakQuery.data?.streak ?? 0;
+    const isCelebratingStreak = useStreakCelebration(streak);
 
     useEffect(() => {
         setMounted(true);
@@ -84,11 +87,11 @@ export function AuthButton({ initialViewer }: AuthButtonProps) {
                             {session.user.email}
                         </p>
                     </div>
-                    <div className="flex items-center justify-between px-2 py-2 border-b text-sm">
+                    <div className={`flex items-center justify-between px-2 py-2 border-b text-sm ${isCelebratingStreak ? "animate-[streak-pop_1.2s_ease-out]" : ""}`}>
                         <span className="text-muted-foreground">Current streak</span>
                         <span className="inline-flex items-center gap-1 font-medium">
-                            <Flame className="h-4 w-4 text-orange-500" />
-                            {streakQuery.data?.streak ?? 0} day{(streakQuery.data?.streak ?? 0) === 1 ? "" : "s"}
+                            <Flame className={`h-4 w-4 text-orange-500 ${isCelebratingStreak ? "animate-[streak-flare_1.2s_ease-out]" : ""}`} />
+                            {streak} day{streak === 1 ? "" : "s"}
                         </span>
                     </div>
                     <DropdownMenuItem
