@@ -21,11 +21,33 @@ function startOfCurrentWeek() {
   return d;
 }
 
+function startOfWeek(date: Date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 function startOfCurrentMonth() {
   const d = new Date();
   d.setDate(1);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+function startOfMonth(date: Date) {
+  const d = new Date(date);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function parseAnchorDate(value: unknown) {
+  if (typeof value !== "string" || !value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 async function getSession() {
@@ -102,9 +124,10 @@ export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async (
   }
 });
 
-export const getWeekUpdates = createServerFn({ method: "GET" }).handler(async () => {
+export const getWeekUpdates = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
-    const start = startOfCurrentWeek();
+    const anchor = parseAnchorDate(ctx.data);
+    const start = anchor ? startOfWeek(anchor) : startOfCurrentWeek();
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     end.setHours(23, 59, 59, 999);
@@ -115,9 +138,10 @@ export const getWeekUpdates = createServerFn({ method: "GET" }).handler(async ()
   }
 });
 
-export const getMonthUpdates = createServerFn({ method: "GET" }).handler(async () => {
+export const getMonthUpdates = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
-    const start = startOfCurrentMonth();
+    const anchor = parseAnchorDate(ctx.data);
+    const start = anchor ? startOfMonth(anchor) : startOfCurrentMonth();
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
     return await getTopUpdatesBetween(start, end);
   } catch (error: any) {
@@ -144,9 +168,10 @@ async function getUpdatesSummaryBetween(from: Date, to: Date) {
   return rows;
 }
 
-export const getWeekUpdatesSummary = createServerFn({ method: "GET" }).handler(async () => {
+export const getWeekUpdatesSummary = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
-    const start = startOfCurrentWeek();
+    const anchor = parseAnchorDate(ctx.data);
+    const start = anchor ? startOfWeek(anchor) : startOfCurrentWeek();
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     end.setHours(23, 59, 59, 999);
@@ -157,9 +182,10 @@ export const getWeekUpdatesSummary = createServerFn({ method: "GET" }).handler(a
   }
 });
 
-export const getMonthUpdatesSummary = createServerFn({ method: "GET" }).handler(async () => {
+export const getMonthUpdatesSummary = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
-    const start = startOfCurrentMonth();
+    const anchor = parseAnchorDate(ctx.data);
+    const start = anchor ? startOfMonth(anchor) : startOfCurrentMonth();
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
     return await getUpdatesSummaryBetween(start, end);
   } catch (error: any) {
@@ -301,4 +327,3 @@ export const getAllUpdates = createServerFn({ method: "GET" }).handler(async () 
 export const getMustReads = createServerFn({ method: "GET" }).handler(async () => {
   return getUpdatesWithSeenState(eq(updates.is_must_read, true));
 });
-

@@ -7,10 +7,12 @@ import {
 } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
 import { createSeoHead } from "@/lib/seo";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () =>
@@ -41,14 +43,29 @@ function groupUpdatesByDate(updates: { id: string | number, created_at: Date | s
   return grouped;
 }
 
-function getCurrentWeekDays() {
-  const days = [];
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  // Monday as first day of week
+function formatDateParam(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getWeekStart(date = new Date()) {
+  const d = new Date(date);
+  const dayOfWeek = d.getDay();
   const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMonday);
+  d.setDate(d.getDate() + diffToMonday);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getMonthStart(date = new Date()) {
+  const d = new Date(date.getFullYear(), date.getMonth(), 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getCurrentWeekDays(anchor = new Date()) {
+  const days = [];
+  const monday = getWeekStart(anchor);
+  const today = new Date();
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
@@ -56,17 +73,17 @@ function getCurrentWeekDays() {
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
     const dateNum = d.getDate();
-    const isToday = d.toDateString() === new Date().toDateString();
+    const isToday = d.toDateString() === today.toDateString();
     days.push({ dateStr, dayName, dateNum, isToday });
   }
   return days;
 }
 
-function getCurrentMonthDays() {
+function getCurrentMonthDays(anchor = new Date()) {
   const days = [];
-  const curr = new Date();
-  const year = curr.getFullYear();
-  const month = curr.getMonth();
+  const today = new Date();
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
 
@@ -85,7 +102,7 @@ function getCurrentMonthDays() {
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
     const dateNum = d.getDate();
-    const isToday = d.toDateString() === new Date().toDateString();
+    const isToday = d.toDateString() === today.toDateString();
     days.push({ dateStr, dayName, dateNum, isToday });
   }
 
@@ -99,6 +116,11 @@ function getCurrentMonthDays() {
 function HomePage() {
   const loaderData = Route.useLoaderData();
   const [isRestoringFeedState, setIsRestoringFeedState] = useState(false);
+  const [weekAnchor, setWeekAnchor] = useState(() => getWeekStart());
+  const [monthAnchor, setMonthAnchor] = useState(() => getMonthStart());
+
+  const isCurrentWeek = weekAnchor.getTime() === getWeekStart().getTime();
+  const isCurrentMonth = monthAnchor.getTime() === getMonthStart().getTime();
 
   useEffect(() => {
     const shouldRestore = consumeScrollRestoreFlag("/");
@@ -124,16 +146,16 @@ function HomePage() {
   });
 
   const weekQuery = useQuery({
-    queryKey: ["updates", "week", "summary"],
-    queryFn: () => getWeekUpdatesSummary(),
-    initialData: loaderData.week,
+    queryKey: ["updates", "week", "summary", formatDateParam(weekAnchor)],
+    queryFn: () => getWeekUpdatesSummary({ data: formatDateParam(weekAnchor) }),
+    initialData: isCurrentWeek ? loaderData.week : undefined,
     staleTime: 5 * 60 * 1000
   });
 
   const monthQuery = useQuery({
-    queryKey: ["updates", "month", "summary"],
-    queryFn: () => getMonthUpdatesSummary(),
-    initialData: loaderData.month,
+    queryKey: ["updates", "month", "summary", formatDateParam(monthAnchor)],
+    queryFn: () => getMonthUpdatesSummary({ data: formatDateParam(monthAnchor) }),
+    initialData: isCurrentMonth ? loaderData.month : undefined,
     staleTime: 5 * 60 * 1000
   });
 
@@ -201,8 +223,47 @@ function HomePage() {
         <section>
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-border/40 pb-4">
             <div className="space-y-2">
-              <h2 className="text-3xl font-heading font-bold tracking-tight">This Week</h2>
-              <p className="text-muted-foreground text-lg">Catch up on what you missed this week.</p>
+              <h2 className="text-3xl font-heading font-bold tracking-tight">
+                {isCurrentWeek ? "This Week" : "Week View"}
+              </h2>
+              <p className="text-muted-foreground text-lg">
+                {weekAnchor.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                {" - "}
+                {new Date(weekAnchor.getFullYear(), weekAnchor.getMonth(), weekAnchor.getDate() + 6).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setWeekAnchor((prev) => {
+                  const next = new Date(prev);
+                  next.setDate(prev.getDate() - 7);
+                  return getWeekStart(next);
+                })}
+              >
+                <ChevronLeft />
+                Previous Week
+              </Button>
+              {isCurrentWeek ? (
+                <Button variant="outline" size="sm" disabled>
+                  Next Week
+                  <ChevronRight />
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWeekAnchor((prev) => {
+                    const next = new Date(prev);
+                    next.setDate(prev.getDate() + 7);
+                    return getWeekStart(next);
+                  })}
+                >
+                  Next Week
+                  <ChevronRight />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -216,7 +277,7 @@ function HomePage() {
               transition={{ duration: 0.5 }}
               className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4"
             >
-              {getCurrentWeekDays().map((day, idx) => {
+              {getCurrentWeekDays(weekAnchor).map((day, idx) => {
                 const count = weekCounts[day.dateStr] || 0;
                 return (
                   <motion.div
@@ -246,8 +307,37 @@ function HomePage() {
         <section>
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-border/40 pb-4">
             <div className="space-y-2">
-              <h2 className="text-3xl font-heading font-bold tracking-tight">This Month</h2>
-              <p className="text-muted-foreground text-lg">The biggest AI stories of the month.</p>
+              <h2 className="text-3xl font-heading font-bold tracking-tight">
+                {isCurrentMonth ? "This Month" : "Month View"}
+              </h2>
+              <p className="text-muted-foreground text-lg">
+                {monthAnchor.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMonthAnchor((prev) => getMonthStart(new Date(prev.getFullYear(), prev.getMonth() - 1, 1)))}
+              >
+                <ChevronLeft />
+                Previous Month
+              </Button>
+              {isCurrentMonth ? (
+                <Button variant="outline" size="sm" disabled>
+                  Next Month
+                  <ChevronRight />
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMonthAnchor((prev) => getMonthStart(new Date(prev.getFullYear(), prev.getMonth() + 1, 1)))}
+                >
+                  Next Month
+                  <ChevronRight />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -258,7 +348,7 @@ function HomePage() {
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(dayName => (
                 <div key={dayName} className="text-center font-semibold text-xs text-muted-foreground pb-2">{dayName}</div>
               ))}
-              {getCurrentMonthDays().map((day, i) => {
+              {getCurrentMonthDays(monthAnchor).map((day, i) => {
                 if (!day) return <div key={`empty-${i}`} className="p-3" />;
                 const count = monthCounts[day.dateStr] || 0;
                 return (
@@ -266,15 +356,13 @@ function HomePage() {
                     key={day.dateStr}
                     to="/date/$date"
                     params={{ date: day.dateStr }}
-                    className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 relative overflow-hidden cursor-pointer' : 'bg-muted/20 opacity-60 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                    className={`flex min-h-[88px] flex-col items-center justify-center p-3 rounded-lg border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 relative overflow-hidden cursor-pointer' : 'bg-muted/20 opacity-60 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
                   >
                     {count > 0 && <div className="absolute inset-x-0 bottom-0 h-1 bg-primary/20" />}
                     <span className="text-lg font-bold">{day.dateNum}</span>
-                    {count > 0 ? (
-                      <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" title={`${count} updates`} />
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-transparent mt-2 flex-shrink-0" />
-                    )}
+                    <span className={`mt-2 text-[11px] font-medium ${count > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {count}
+                    </span>
                   </Link>
                 );
               })}
