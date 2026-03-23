@@ -1,9 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { auth } from "./auth";
-import { db } from "./db";
-import { user } from "./schema";
-import { eq } from "drizzle-orm";
+import { getNormalizedUserStreak } from "./streak";
 
 export interface ViewerState {
     session: Awaited<ReturnType<typeof auth.api.getSession>>;
@@ -33,19 +31,12 @@ export const getViewerState = createServerFn({ method: "GET" }).handler(
             const session = await auth.api.getSession({ headers: req.headers });
             if (!session) return null;
 
-            const rows = await db
-                .select({
-                    streak: user.streak,
-                    lastActiveDate: user.last_active_date,
-                })
-                .from(user)
-                .where(eq(user.id, session.user.id))
-                .limit(1);
+            const streakState = await getNormalizedUserStreak(session.user.id);
 
             return {
                 session,
-                streak: rows[0]?.streak ?? 0,
-                lastActiveDate: rows[0]?.lastActiveDate ?? null,
+                streak: streakState.streak,
+                lastActiveDate: streakState.lastActiveDate,
             };
         } catch (error) {
             console.error("❌ getViewerState failed:", error);

@@ -59,6 +59,20 @@ function RootLayout() {
   return (
     <html lang="en">
       <head>
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-MWC6DGEDY4"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-MWC6DGEDY4');
+            `
+          }}
+        />
         <HeadContent />
       </head>
       <body>

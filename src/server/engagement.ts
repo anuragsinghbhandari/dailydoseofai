@@ -4,6 +4,7 @@ import { auth } from "./auth";
 import { db } from "./db";
 import { likes, bookmarks, user_views, comments, user, updates } from "./schema";
 import { and, eq, desc, sql } from "drizzle-orm";
+import { getNormalizedUserStreak, startOfUtcDay } from "./streak";
 
 async function getSession() {
     const req = getRequest();
@@ -11,22 +12,9 @@ async function getSession() {
     return await auth.api.getSession({ headers: req.headers });
 }
 
-function startOfUtcDay(value: Date) {
-    return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
-}
-
 async function updateUserStreak(userId: string) {
     const now = new Date();
-    const userRows = await db
-        .select({
-            streak: user.streak,
-            lastActiveDate: user.last_active_date,
-        })
-        .from(user)
-        .where(eq(user.id, userId))
-        .limit(1);
-
-    const currentUser = userRows[0];
+    const currentUser = await getNormalizedUserStreak(userId);
     if (!currentUser) {
         return { streak: 0, lastActiveDate: null };
     }
@@ -144,17 +132,7 @@ export const getUserStreak = createServerFn({ method: "GET" })
     .handler(async () => {
         const session = await getSession();
         if (!session) return null;
-
-        const rows = await db
-            .select({
-                streak: user.streak,
-                lastActiveDate: user.last_active_date,
-            })
-            .from(user)
-            .where(eq(user.id, session.user.id))
-            .limit(1);
-
-        return rows[0] ?? { streak: 0, lastActiveDate: null };
+        return getNormalizedUserStreak(session.user.id);
     });
 
 export const getUserGlobalEngagement = createServerFn({ method: "GET" })
