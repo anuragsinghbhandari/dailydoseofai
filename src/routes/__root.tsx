@@ -114,12 +114,14 @@ function GoogleAnalyticsPageTracker() {
       return;
     }
 
+    const pagePath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
     window.gtag("config", GOOGLE_ANALYTICS_ID, {
-      page_path: `${location.pathname}${location.search}${location.hash}`,
+      page_path: pagePath,
       page_location: window.location.href,
       page_title: document.title,
     });
-  }, [location.pathname, location.search, location.hash]);
+  }, [location.pathname, location.href]);
 
   return null;
 }
