@@ -154,9 +154,14 @@ export const getUserGlobalEngagement = createServerFn({ method: "GET" })
 export const getArticleEngagement = createServerFn({ method: "GET" })
     .handler(async (ctx: any) => {
         const { updateId } = ctx.data as { updateId: string };
-        const totalLikes = await db.select({ count: sql<number>`count(*)` }).from(likes).where(eq(likes.update_id, updateId));
+        const [totalLikes, totalBookmarks] = await Promise.all([
+            db.select({ count: sql<number>`count(*)` }).from(likes).where(eq(likes.update_id, updateId)),
+            db.select({ count: sql<number>`count(*)` }).from(bookmarks).where(eq(bookmarks.update_id, updateId)),
+        ]);
+
         return {
-            likesCount: Number(totalLikes[0]?.count ?? 0)
+            likesCount: Number(totalLikes[0]?.count ?? 0),
+            bookmarksCount: Number(totalBookmarks[0]?.count ?? 0),
         };
     });
 

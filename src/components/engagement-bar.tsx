@@ -30,6 +30,7 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
     const liked = globalEng?.likes?.includes(updateId) ?? false;
     const bookmarked = globalEng?.bookmarks?.includes(updateId) ?? false;
     const likesCount = articleEng?.likesCount ?? 0;
+    const bookmarksCount = articleEng?.bookmarksCount ?? 0;
     const isShorts = variant === "shorts";
 
     const requireLogin = () => {
@@ -78,7 +79,9 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
         mutationFn: () => (toggleBookmark as any)({ data: { updateId } }),
         onMutate: async () => {
             await queryClient.cancelQueries({ queryKey: ["engagement", "global"] });
+            await queryClient.cancelQueries({ queryKey: ["engagement", "article", updateId] });
             const prevGlobal = queryClient.getQueryData(["engagement", "global"]);
+            const prevArticle = queryClient.getQueryData(["engagement", "article", updateId]);
 
             queryClient.setQueryData(["engagement", "global"], (old: any) => {
                 if (!old) return { likes: [], bookmarks: [updateId] };
@@ -89,13 +92,20 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
                 };
             });
 
-            return { prevGlobal };
+            queryClient.setQueryData(["engagement", "article", updateId], (old: any) => ({
+                ...old,
+                bookmarksCount: bookmarked ? Math.max(0, (old?.bookmarksCount ?? 1) - 1) : (old?.bookmarksCount ?? 0) + 1,
+            }));
+
+            return { prevGlobal, prevArticle };
         },
         onError: (err, variables, context: any) => {
             if (context?.prevGlobal) queryClient.setQueryData(["engagement", "global"], context.prevGlobal);
+            if (context?.prevArticle) queryClient.setQueryData(["engagement", "article", updateId], context.prevArticle);
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["engagement", "global"] });
+            queryClient.invalidateQueries({ queryKey: ["engagement", "article", updateId] });
         },
     });
 
@@ -129,8 +139,9 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
                 >
                     <Bookmark className={`h-6 w-6 ${bookmarked ? "fill-current" : ""}`} />
                 </button>
-                <div className="text-center text-xs font-medium leading-tight text-white/70">
-                    Save
+                <div className="text-center text-xs font-medium leading-tight">
+                    <div>{bookmarksCount}</div>
+                    <div className="text-white/70">Saves</div>
                 </div>
             </div>
         );
@@ -164,7 +175,8 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
                 }}
             >
                 <Bookmark className={`mr-2 h-4 w-4 ${bookmarked ? "fill-current" : ""}`} />
-                Bookmark
+                <span>{bookmarksCount}</span>
+                <span className="ml-1.5">Bookmarks</span>
             </Button>
         </div>
     );
