@@ -3,16 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getTodayUpdates,
   getWeekUpdatesSummary,
-  getMonthUpdatesSummary
+  getMonthUpdatesSummary,
+  getRecentPublishedUpdates,
+  getPublishedCategories
 } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
 import { createSeoHead } from "@/lib/seo";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Rss } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () =>
@@ -24,20 +25,22 @@ export const Route = createFileRoute("/")({
     }),
   component: HomePage,
   loader: async () => {
-    const [today, week, month] = await Promise.all([
+    const [today, week, month, latest, categories] = await Promise.all([
       getTodayUpdates(),
       getWeekUpdatesSummary(),
-      getMonthUpdatesSummary()
+      getMonthUpdatesSummary(),
+      getRecentPublishedUpdates({ data: { limit: 15 } }),
+      getPublishedCategories()
     ]);
-    return { today, week, month };
+    return { today, week, month, latest, categories };
   }
 });
 
-function groupUpdatesByDate(updates: { id: string | number, created_at: Date | string }[]) {
+function groupUpdatesByDate(updates: { id: string | number; created_at: Date | string }[]) {
   const grouped: Record<string, number> = {};
   for (const update of updates) {
     const d = new Date(update.created_at);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     grouped[dateStr] = (grouped[dateStr] || 0) + 1;
   }
   return grouped;
@@ -70,8 +73,8 @@ function getCurrentWeekDays(anchor = new Date()) {
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
     const dateNum = d.getDate();
     const isToday = d.toDateString() === today.toDateString();
     days.push({ dateStr, dayName, dateNum, isToday });
@@ -86,27 +89,22 @@ function getCurrentMonthDays(anchor = new Date()) {
   const month = anchor.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-
-  // Determine starting weekday (Monday = 0 for our grid alignment)
   const startWeekday = firstDay.getDay();
   const startDay = (startWeekday + 6) % 7;
 
-  // Padding for beginning of month
   for (let i = 0; i < startDay; i++) {
     days.push(null);
   }
 
-  // Days of month
   for (let i = 1; i <= lastDay.getDate(); i++) {
     const d = new Date(year, month, i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
     const dateNum = d.getDate();
     const isToday = d.toDateString() === today.toDateString();
     days.push({ dateStr, dayName, dateNum, isToday });
   }
 
-  // Padding for end of month to complete the row
   while (days.length % 7 !== 0) {
     days.push(null);
   }
@@ -159,15 +157,8 @@ function HomePage() {
     staleTime: 5 * 60 * 1000
   });
 
-  const weekCounts = useMemo(
-    () => groupUpdatesByDate(weekQuery.data ?? []),
-    [weekQuery.data]
-  );
-
-  const monthCounts = useMemo(
-    () => groupUpdatesByDate(monthQuery.data ?? []),
-    [monthQuery.data]
-  );
+  const weekCounts = useMemo(() => groupUpdatesByDate(weekQuery.data ?? []), [weekQuery.data]);
+  const monthCounts = useMemo(() => groupUpdatesByDate(monthQuery.data ?? []), [monthQuery.data]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -205,6 +196,71 @@ function HomePage() {
       </section>
 
       <div className="container py-16 md:py-24 space-y-20">
+        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.9fr)]">
+          <div className="rounded-3xl border border-border/50 bg-card/80 p-6 shadow-sm backdrop-blur md:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4 border-b border-border/40 pb-4">
+              <div>
+                <h2 className="text-3xl font-heading font-bold tracking-tight">Latest Articles</h2>
+                <p className="mt-2 text-muted-foreground text-base md:text-lg">
+                  Freshly published AI stories linked directly from the homepage for faster discovery.
+                </p>
+              </div>
+              <a href="/rss.xml" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+                <Rss className="h-4 w-4" />
+                RSS Feed
+              </a>
+            </div>
+
+            <ol className="space-y-3">
+              {loaderData.latest.map((update, index) => (
+                <li key={update.id} className="grid gap-2 border-b border-border/30 pb-3 last:border-b-0 last:pb-0 md:grid-cols-[auto_1fr] md:gap-4">
+                  <span className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground/80">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="space-y-1">
+                    <Link
+                      to="/update/$slug"
+                      params={{ slug: update.slug }}
+                      className="text-base font-semibold leading-snug text-foreground transition-colors hover:text-primary"
+                    >
+                      {update.title}
+                    </Link>
+                    <p className="text-sm text-muted-foreground">
+                      Published {new Date(update.created_at).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric"
+                      })}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <aside className="rounded-3xl border border-border/50 bg-card/80 p-6 shadow-sm backdrop-blur md:p-8">
+            <div className="mb-6 border-b border-border/40 pb-4">
+              <h2 className="text-2xl font-heading font-bold tracking-tight">Browse by Category</h2>
+              <p className="mt-2 text-muted-foreground">
+                Category archives keep older stories reachable in two clicks from the homepage.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {loaderData.categories.slice(0, 12).map((category) => (
+                <Link
+                  key={category.slug}
+                  to="/category/$categorySlug"
+                  params={{ categorySlug: category.slug }}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                >
+                  <span>{category.name}</span>
+                  <span className="text-muted-foreground">{category.count}</span>
+                </Link>
+              ))}
+            </div>
+          </aside>
+        </section>
+
         <section>
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-border/40 pb-4">
             <div className="space-y-2">
@@ -267,41 +323,31 @@ function HomePage() {
             </div>
           </div>
 
-          {weekQuery.isLoading ? (
-            <Skeleton className="w-full h-32 rounded-xl" />
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.5 }}
-              className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4"
-            >
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
               {getCurrentWeekDays(weekAnchor).map((day, idx) => {
                 const count = weekCounts[day.dateStr] || 0;
                 return (
                   <motion.div
                     key={day.dateStr}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 + 0.2 }}
                   >
                     <Link
                       to="/date/$date"
                       params={{ date: day.dateStr }}
-                    className={`flex flex-col items-center justify-center p-4 h-full rounded-xl border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 cursor-pointer hover:-translate-y-1' : 'bg-muted/20 opacity-70 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                      className={`flex min-h-[88px] flex-col items-center justify-center p-3 rounded-lg border transition-all hover:shadow-md ${count > 0 ? "bg-card hover:border-primary/50 relative overflow-hidden cursor-pointer" : "bg-muted/20 opacity-60 hover:opacity-100 cursor-pointer"} ${day.isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
                     >
-                      <span className="text-sm text-muted-foreground uppercase">{day.dayName}</span>
-                      <span className="text-3xl font-bold mt-1">{day.dateNum}</span>
-                      <span className={`text-xs font-medium mt-2 px-2 py-0.5 rounded-full ${count > 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                        {count} {count === 1 ? 'update' : 'updates'}
-                      </span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{day.dayName}</span>
+                      <span className="text-2xl font-bold mt-1">{day.dateNum}</span>
+                      <span className="text-xs mt-1 text-muted-foreground">{count} updates</span>
                     </Link>
                   </motion.div>
                 );
               })}
-            </motion.div>
-          )}
+            </div>
+          </div>
         </section>
 
         <section>
@@ -318,7 +364,7 @@ function HomePage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setMonthAnchor((prev) => getMonthStart(new Date(prev.getFullYear(), prev.getMonth() - 1, 1)))}
+                onClick={() => setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
               >
                 <ChevronLeft />
                 Previous Month
@@ -332,7 +378,7 @@ function HomePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setMonthAnchor((prev) => getMonthStart(new Date(prev.getFullYear(), prev.getMonth() + 1, 1)))}
+                  onClick={() => setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
                 >
                   Next Month
                   <ChevronRight />
@@ -341,33 +387,34 @@ function HomePage() {
             </div>
           </div>
 
-          {monthQuery.isLoading ? (
-            <Skeleton className="w-full h-64 rounded-xl" />
-          ) : (
+          <div className="space-y-6">
             <div className="grid grid-cols-7 gap-3">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(dayName => (
-                <div key={dayName} className="text-center font-semibold text-xs text-muted-foreground pb-2">{dayName}</div>
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                  {day}
+                </div>
               ))}
-              {getCurrentMonthDays(monthAnchor).map((day, i) => {
-                if (!day) return <div key={`empty-${i}`} className="p-3" />;
+              {getCurrentMonthDays(monthAnchor).map((day, idx) => {
+                if (!day) {
+                  return <div key={`empty-${idx}`} className="min-h-[88px] rounded-lg border border-dashed border-border/40 bg-muted/10" />;
+                }
+
                 const count = monthCounts[day.dateStr] || 0;
                 return (
                   <Link
                     key={day.dateStr}
                     to="/date/$date"
                     params={{ date: day.dateStr }}
-                    className={`flex min-h-[88px] flex-col items-center justify-center p-3 rounded-lg border transition-all hover:shadow-md ${count > 0 ? 'bg-card hover:border-primary/50 relative overflow-hidden cursor-pointer' : 'bg-muted/20 opacity-60 hover:opacity-100 cursor-pointer'} ${day.isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                    className={`flex min-h-[88px] flex-col items-center justify-center p-3 rounded-lg border transition-all hover:shadow-md ${count > 0 ? "bg-card hover:border-primary/50 relative overflow-hidden cursor-pointer" : "bg-muted/20 opacity-60 hover:opacity-100 cursor-pointer"} ${day.isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
                   >
-                    {count > 0 && <div className="absolute inset-x-0 bottom-0 h-1 bg-primary/20" />}
-                    <span className="text-lg font-bold">{day.dateNum}</span>
-                    <span className={`mt-2 text-[11px] font-medium ${count > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {count}
-                    </span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{day.dayName}</span>
+                    <span className="text-2xl font-bold mt-1">{day.dateNum}</span>
+                    <span className="text-xs mt-1 text-muted-foreground">{count} updates</span>
                   </Link>
                 );
               })}
             </div>
-          )}
+          </div>
         </section>
       </div>
     </div>

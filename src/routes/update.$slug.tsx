@@ -1,23 +1,21 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { getUpdateBySlug, getAdjacentUpdates } from "@/server/queries";
+import { useEffect, useState } from "react";
+import {
+  getAdjacentUpdates,
+  getRecentPublishedUpdates,
+  getRelatedUpdates,
+  getUpdateBySlug
+} from "@/server/queries";
 import { useSwipeable } from "react-swipeable";
-import { useState } from "react";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImpactScore } from "@/components/impact-score";
 import { CategoryBadge } from "@/components/category-badge";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import { EngagementBar } from "@/components/engagement-bar";
 import { CommentsSection } from "@/components/comments-section";
 import { recordView } from "@/server/engagement";
@@ -25,6 +23,15 @@ import { useSession } from "@/lib/auth";
 import { markUpdateAsSeen } from "@/lib/local-seen";
 import { buildNavigationContextKey, getNavigationSlugs } from "@/lib/navigation-memory";
 import { absoluteUrl, createSeoHead, truncateDescription } from "@/lib/seo";
+import { toCategorySlug } from "@/lib/content-taxonomy";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from "@/components/ui/breadcrumb";
 
 function markUpdateSeenInCachedLists(queryClient: ReturnType<typeof useQueryClient>, updateId: string) {
   queryClient.setQueriesData({ queryKey: ["updates"] }, (existing) => {
@@ -35,6 +42,35 @@ function markUpdateSeenInCachedLists(queryClient: ReturnType<typeof useQueryClie
       return { ...item, isSeen: true };
     });
   });
+}
+
+function buildBreadcrumbSchema(update: any) {
+  const categorySlug = toCategorySlug(update.category);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: absoluteUrl("/")
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: update.category,
+        item: absoluteUrl(`/category/${categorySlug}`)
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: update.title,
+        item: absoluteUrl(`/update/${update.slug}`)
+      }
+    ]
+  };
 }
 
 export const Route = createFileRoute("/update/$slug")({
@@ -77,6 +113,10 @@ export const Route = createFileRoute("/update/$slug")({
                 isAccessibleForFree: true,
                 ...(update.source_url ? { sameAs: [update.source_url] } : {})
               })
+            },
+            {
+              type: "application/ld+json",
+              children: JSON.stringify(buildBreadcrumbSchema(update))
             }
           ]
         : []
@@ -88,11 +128,24 @@ export const Route = createFileRoute("/update/$slug")({
   }),
   loader: async ({ params, deps }) => {
     const searchDeps = deps as any;
-    const [update, adjacent] = await Promise.all([
-      (getUpdateBySlug as any)({ data: params.slug }),
-      (getAdjacentUpdates as any)({ data: { slug: params.slug, list: searchDeps?.list } })
+    const update = await (getUpdateBySlug as any)({ data: params.slug });
+
+    if (!update) {
+      return {
+        update: null,
+        adjacent: { prevSlug: null, nextSlug: null },
+        related: [],
+        recent: []
+      };
+    }
+
+    const [adjacent, related, recent] = await Promise.all([
+      (getAdjacentUpdates as any)({ data: { slug: params.slug, list: searchDeps?.list } }),
+      (getRelatedUpdates as any)({ data: { slug: params.slug, category: update.category, limit: 4 } }),
+      (getRecentPublishedUpdates as any)({ data: { limit: 8 } })
     ]);
-    return { update, adjacent };
+
+    return { update, adjacent, related, recent };
   },
   loaderDeps: ({ search: { list, date } }) => ({ list, date }),
   pendingComponent: () => (
@@ -103,7 +156,7 @@ export const Route = createFileRoute("/update/$slug")({
         <div className="h-24 flex-1 bg-muted rounded-xl animate-pulse" />
         <div className="h-24 flex-1 bg-muted rounded-xl animate-pulse" />
       </div>
-      <div className="grid gap-12 md:grid-cols-[1fr_250px]">
+      <div className="grid gap-12 md:grid-cols-[1fr_300px]">
         <div className="space-y-4">
           <div className="h-4 w-full bg-muted rounded animate-pulse" />
           <div className="h-4 w-full bg-muted rounded animate-pulse" />
@@ -126,16 +179,16 @@ function UpdateDetailPage() {
 
   const queryClient = useQueryClient();
 
-  // Look up if this exact article already exists in the "Today" list cache or any date cache
   const todayUpdates = queryClient.getQueryData(["updates", "today"]) as any[] | undefined;
   const listUpdates = list ? queryClient.getQueryData(["updates", list]) as any[] | undefined : undefined;
-  let initialUpdateData = loaderData.update || listUpdates?.find(u => u.slug === slug) || todayUpdates?.find(u => u.slug === slug);
+  let initialUpdateData =
+    loaderData.update || listUpdates?.find((update) => update.slug === slug) || todayUpdates?.find((update) => update.slug === slug);
 
   if (!initialUpdateData) {
     const dateQueries = queryClient.getQueriesData({ queryKey: ["updates", "date"] });
-    for (const [key, data] of dateQueries) {
+    for (const [, data] of dateQueries) {
       if (Array.isArray(data)) {
-        const found = data.find(u => u.slug === slug);
+        const found = data.find((update) => update.slug === slug);
         if (found) {
           initialUpdateData = found;
           break;
@@ -169,8 +222,8 @@ function UpdateDetailPage() {
 
   useEffect(() => {
     const search = { ...(list ? { list } : {}), ...(date ? { date } : {}) };
-    if (activeNextSlug) router.preloadRoute({ to: `/update/${activeNextSlug}`, search }).catch(() => { });
-    if (activePrevSlug) router.preloadRoute({ to: `/update/${activePrevSlug}`, search }).catch(() => { });
+    if (activeNextSlug) router.preloadRoute({ to: `/update/${activeNextSlug}`, search }).catch(() => {});
+    if (activePrevSlug) router.preloadRoute({ to: `/update/${activePrevSlug}`, search }).catch(() => {});
   }, [activeNextSlug, activePrevSlug, router, list, date]);
 
   const goToNext = () => {
@@ -196,7 +249,7 @@ function UpdateDetailPage() {
 
   useEffect(() => {
     if (update?.id) {
-        if (session) {
+      if (session) {
         markUpdateSeenInCachedLists(queryClient, update.id);
         (recordView as any)({ data: { updateId: update.id } })
           .then((result: any) => {
@@ -226,12 +279,22 @@ function UpdateDetailPage() {
   if (!update) {
     return (
       <div className="container py-8">
-        <p className="text-sm text-muted-foreground">
-          Update not found or unpublished.
-        </p>
+        <p className="text-sm text-muted-foreground">Update not found or unpublished.</p>
       </div>
     );
   }
+
+  const relatedUpdates = (loaderData.related ?? []).filter((item: any) => item.slug !== slug).slice(0, 4);
+  const recentUpdates = (loaderData.recent ?? []).filter((item: any) => item.slug !== slug).slice(0, 6);
+  const contextualLinks = [...relatedUpdates, ...recentUpdates].filter(
+    (item: any, index: number, arr: any[]) => arr.findIndex((candidate) => candidate.slug === item.slug) === index
+  ).slice(0, 4);
+  const categorySlug = toCategorySlug(update.category);
+  const articleDate = new Date(update.created_at).toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 
   const slideVariants: any = {
     initial: (d: number) => ({ x: d > 0 ? 50 : -50, opacity: 0 }),
@@ -240,20 +303,43 @@ function UpdateDetailPage() {
   };
 
   return (
-    <div {...handlers} className="container max-w-5xl px-4 py-6 md:py-12 relative overflow-hidden">
+    <div {...handlers} className="container max-w-6xl px-4 py-6 md:py-12 relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
       <div className="fixed right-3 top-1/2 z-20 -translate-y-1/2 sm:hidden">
         <EngagementBar updateId={update.id} variant="shorts" />
       </div>
-      <div className="mb-8">
+
+      <div className="mb-8 space-y-6">
         <Link
           to={date ? "/date/$date" : list === "bookmarks" ? "/bookmarks" : "/"}
           params={date ? { date } : undefined}
-          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-6"
+          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to {date ? "updates" : list === "bookmarks" ? "Bookmarks" : "updates"}
         </Link>
+
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/">Home</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/category/$categorySlug" params={{ categorySlug }}>
+                  {update.category}
+                </Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{update.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
 
       <AnimatePresence mode="wait" custom={direction}>
@@ -268,15 +354,17 @@ function UpdateDetailPage() {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
               <div className="space-y-4 flex-1">
-                <div className="flex items-center gap-2">
-                  <CategoryBadge category={update.category} />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {new Date(update.created_at).toLocaleDateString(undefined, {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric"
-                    })}
-                  </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link to="/category/$categorySlug" params={{ categorySlug }} className="hover:opacity-90">
+                    <CategoryBadge category={update.category} />
+                  </Link>
+                  <Link
+                    to="/date/$date"
+                    params={{ date: new Date(update.created_at).toISOString().slice(0, 10) }}
+                    className="text-sm font-medium text-muted-foreground hover:text-primary"
+                  >
+                    {articleDate}
+                  </Link>
                 </div>
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-extrabold tracking-tight leading-tight">
                   {update.title}
@@ -326,7 +414,7 @@ function UpdateDetailPage() {
                     <ChevronLeft className="h-3.5 w-3.5 mr-1" />
                     Previous Article
                   </div>
-                  <span className="text-sm font-medium line-clamp-2">Swipe Right</span>
+                  <span className="text-sm font-medium line-clamp-2">Move to the previous article in the active list</span>
                 </Link>
               ) : (
                 <div className="p-4 rounded-xl border border-dashed bg-muted/30 text-muted-foreground flex items-center justify-center text-sm h-full">
@@ -348,7 +436,7 @@ function UpdateDetailPage() {
                     Next Article
                     <ChevronRight className="h-3.5 w-3.5 ml-1" />
                   </div>
-                  <span className="text-sm font-medium line-clamp-2">Swipe Left</span>
+                  <span className="text-sm font-medium line-clamp-2">Move to the next article in the active list</span>
                 </Link>
               ) : (
                 <div className="p-4 rounded-xl border border-dashed bg-muted/30 text-muted-foreground flex items-center justify-center text-sm h-full">
@@ -360,7 +448,7 @@ function UpdateDetailPage() {
 
           <Separator className="my-8" />
 
-          <div className="grid gap-8 md:gap-12 md:grid-cols-[minmax(0,1fr)_250px]">
+          <div className="grid gap-8 md:gap-12 md:grid-cols-[minmax(0,1fr)_300px]">
             <article className="space-y-6 md:space-y-8 prose prose-neutral dark:prose-invert max-w-none">
               <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                 <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
@@ -371,22 +459,61 @@ function UpdateDetailPage() {
                 </p>
               </section>
 
-
-
-              {update.content && !update.content.startsWith('Source: http') && (
+              {update.content && !update.content.startsWith("Source: http") && (
                 <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                   <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
                     Deep Dive
                   </h2>
-                  <div className="whitespace-pre-wrap leading-relaxed">
-                    {update.content}
-                  </div>
+                  <div className="whitespace-pre-wrap leading-relaxed">{update.content}</div>
+                </section>
+              )}
+
+              {contextualLinks.length > 0 && (
+                <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                  <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
+                    Continue Reading
+                  </h2>
+                  <p className="leading-relaxed text-muted-foreground">
+                    Explore related coverage about {update.category.toLowerCase()} and adjacent AI developments: {contextualLinks.map((item: any, index: number) => (
+                      <span key={item.slug}>
+                        <Link to="/update/$slug" params={{ slug: item.slug }} className="font-medium text-primary hover:underline">
+                          {item.title}
+                        </Link>
+                        {index < contextualLinks.length - 1 ? ", " : "."}
+                      </span>
+                    ))}
+                  </p>
+                </section>
+              )}
+
+              {relatedUpdates.length > 0 && (
+                <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                  <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
+                    Related Articles
+                  </h2>
+                  <ul className="not-prose space-y-3">
+                    {relatedUpdates.map((item: any) => (
+                      <li key={item.slug} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
+                        <Link to="/update/$slug" params={{ slug: item.slug }} className="font-medium text-foreground hover:text-primary hover:underline">
+                          {item.title}
+                        </Link>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {new Date(item.created_at).toLocaleDateString(undefined, {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric"
+                          })}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
                 </section>
               )}
 
               <div className="hidden sm:block">
                 <EngagementBar updateId={update.id} />
               </div>
+
               <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                 <CommentsSection updateId={update.id} />
               </section>
@@ -400,7 +527,15 @@ function UpdateDetailPage() {
                 <CardContent className="space-y-4 text-sm">
                   <div>
                     <span className="font-semibold block mb-1">Category</span>
-                    <span className="text-muted-foreground">{update.category}</span>
+                    <Link to="/category/$categorySlug" params={{ categorySlug }} className="text-primary hover:underline">
+                      {update.category}
+                    </Link>
+                  </div>
+                  <div>
+                    <span className="font-semibold block mb-1">Published</span>
+                    <Link to="/date/$date" params={{ date: new Date(update.created_at).toISOString().slice(0, 10) }} className="text-primary hover:underline">
+                      {articleDate}
+                    </Link>
                   </div>
                   <div>
                     <span className="font-semibold block mb-1">Impact</span>
@@ -422,6 +557,31 @@ function UpdateDetailPage() {
                 </CardContent>
               </Card>
 
+              {recentUpdates.length > 0 && (
+                <Card className="rounded-3xl border-border/50 bg-card/80 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="text-sm">Recent Articles</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-4 text-sm">
+                      {recentUpdates.map((item: any) => (
+                        <li key={item.slug} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
+                          <Link to="/update/$slug" params={{ slug: item.slug }} className="font-medium text-foreground hover:text-primary hover:underline">
+                            {item.title}
+                          </Link>
+                          <p className="mt-1 text-muted-foreground">
+                            {new Date(item.created_at).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric"
+                            })}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
             </aside>
           </div>
         </motion.div>

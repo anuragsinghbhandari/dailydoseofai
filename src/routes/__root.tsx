@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@vercel/analytics/react";
 import appCss from "@/index.css?url";
 import { getViewerState } from "@/server/auth-state";
+import { getRecentPublishedUpdates } from "@/server/queries";
 import { SITE_NAME } from "@/lib/seo";
 
 declare global {
@@ -28,8 +29,11 @@ const GOOGLE_ANALYTICS_ID = "G-MWC6DGEDY4";
 
 export const Route = createRootRoute({
   loader: async () => {
-    const viewer = await getViewerState();
-    return { viewer };
+    const [viewer, recentPosts] = await Promise.all([
+      getViewerState(),
+      getRecentPublishedUpdates({ data: { limit: 5 } })
+    ]);
+    return { viewer, recentPosts };
   },
   head: () => ({
     meta: [
@@ -44,6 +48,12 @@ export const Route = createRootRoute({
       {
         rel: "stylesheet",
         href: appCss
+      },
+      {
+        rel: "alternate",
+        type: "application/rss+xml",
+        title: "AI Dose RSS Feed",
+        href: "/rss.xml"
       }
     ]
   }),
@@ -62,10 +72,8 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
-  const { viewer } = Route.useLoaderData();
-  const [queryClient] = React.useState(
-    () => new QueryClient()
-  );
+  const { viewer, recentPosts } = Route.useLoaderData();
+  const [queryClient] = React.useState(() => new QueryClient());
 
   return (
     <html lang="en">
@@ -97,6 +105,55 @@ function RootLayout() {
               <main className="flex-1">
                 <Outlet />
               </main>
+              <footer className="border-t border-border/50 bg-card/40">
+                <div className="container grid gap-8 py-10 md:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+                  <div className="space-y-3">
+                    <h2 className="text-xl font-heading font-semibold tracking-tight">AI Dose</h2>
+                    <p className="max-w-2xl text-sm text-muted-foreground">
+                      Daily AI reporting with direct links to the newest stories, category archives, and feed endpoints so fresh articles are easy for readers and crawlers to discover.
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <Link to="/" className="text-foreground hover:text-primary hover:underline">
+                        Home
+                      </Link>
+                      <Link to="/today" className="text-foreground hover:text-primary hover:underline">
+                        Today
+                      </Link>
+                      <a href="/rss.xml" className="text-foreground hover:text-primary hover:underline">
+                        RSS Feed
+                      </a>
+                      <a href="/sitemap.xml" className="text-foreground hover:text-primary hover:underline">
+                        Sitemap
+                      </a>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      Recent Posts
+                    </h2>
+                    <ul className="space-y-3 text-sm">
+                      {recentPosts.map((post) => (
+                        <li key={post.id} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
+                          <Link
+                            to="/update/$slug"
+                            params={{ slug: post.slug }}
+                            className="font-medium text-foreground hover:text-primary hover:underline"
+                          >
+                            {post.title}
+                          </Link>
+                          <p className="mt-1 text-muted-foreground">
+                            {new Date(post.created_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric"
+                            })}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </footer>
             </div>
             <Toaster />
             <Analytics />
