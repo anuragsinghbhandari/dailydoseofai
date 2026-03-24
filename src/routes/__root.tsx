@@ -78,26 +78,11 @@ function RootLayout() {
   return (
     <html lang="en">
       <head>
-        <script
-          async
-          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              window.gtag = gtag;
-              gtag('js', new Date());
-              gtag('config', '${GOOGLE_ANALYTICS_ID}', { send_page_view: false });
-            `
-          }}
-        />
         <HeadContent />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <GoogleAnalyticsPageTracker />
+          <DeferredGoogleAnalytics />
           <ThemeProvider defaultTheme="system">
             <StreakCelebrationOverlay initialViewer={viewer} />
             <div className="relative flex min-h-screen flex-col bg-background">
@@ -165,22 +150,81 @@ function RootLayout() {
   );
 }
 
-function GoogleAnalyticsPageTracker() {
+function DeferredGoogleAnalytics() {
   const location = useLocation();
+  const [isReady, setIsReady] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof window === "undefined" || typeof window.gtag !== "function") {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const pagePath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    let canceled = false;
+    let timeoutId: number | undefined;
+    let idleId: number | undefined;
+
+    const initializeAnalytics = () => {
+      const existingScript = document.querySelector<HTMLScriptElement>("script[data-gtag-id=" + GOOGLE_ANALYTICS_ID + "]");
+
+      if (existingScript && window.gtag) {
+        setIsReady(true);
+        return;
+      }
+
+      const script = existingScript ?? document.createElement("script");
+      script.async = true;
+      script.src = "https://www.googletagmanager.com/gtag/js?id=" + GOOGLE_ANALYTICS_ID;
+      script.dataset.gtagId = GOOGLE_ANALYTICS_ID;
+
+      script.onload = () => {
+        if (canceled) {
+          return;
+        }
+
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = (...args: unknown[]) => {
+          window.dataLayer.push(args);
+        };
+        window.gtag("js", new Date());
+        window.gtag("config", GOOGLE_ANALYTICS_ID, { send_page_view: false });
+        setIsReady(true);
+      };
+
+      if (!existingScript) {
+        document.head.appendChild(script);
+      }
+    };
+
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(initializeAnalytics, { timeout: 2000 });
+    } else {
+      timeoutId = window.setTimeout(initializeAnalytics, 1500);
+    }
+
+    return () => {
+      canceled = true;
+      if (typeof timeoutId !== "undefined") {
+        window.clearTimeout(timeoutId);
+      }
+      if (typeof idleId !== "undefined" && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof window.gtag !== "function" || !isReady) {
+      return;
+    }
+
+    const pagePath = window.location.pathname + window.location.search + window.location.hash;
 
     window.gtag("config", GOOGLE_ANALYTICS_ID, {
       page_path: pagePath,
       page_location: window.location.href,
       page_title: document.title,
     });
-  }, [location.pathname, location.href]);
+  }, [isReady, location.pathname, location.href]);
 
   return null;
 }

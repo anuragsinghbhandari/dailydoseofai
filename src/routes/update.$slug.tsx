@@ -343,7 +343,7 @@ function UpdateDetailPage() {
         </Breadcrumb>
       </div>
 
-      <AnimatePresence mode="wait" custom={direction}>
+      <AnimatePresence mode="wait" custom={direction} initial={false}>
         <motion.div
           key={slug}
           custom={direction}
