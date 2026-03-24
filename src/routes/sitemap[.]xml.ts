@@ -1,8 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { absoluteUrl } from "@/lib/seo";
 import { db } from "@/server/db";
 import { updates } from "@/server/schema";
+
+type SitemapUrl = {
+  loc: string;
+  lastmod?: string;
+  changefreq?: string;
+  priority?: string;
+};
+
+function toIsoString(value: Date | string) {
+  return new Date(value).toISOString();
+}
+
+function toDateKey(value: Date | string) {
+  return toIsoString(value).slice(0, 10);
+}
+
+function escapeXml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
@@ -17,46 +41,54 @@ export const Route = createFileRoute("/sitemap.xml")({
           .where(eq(updates.published, true))
           .orderBy(desc(updates.created_at));
 
-        const publishedDates = await db
-          .select({
-            date: sql<string>`to_char(${updates.created_at}::date, 'YYYY-MM-DD')`
-          })
-          .from(updates)
-          .where(eq(updates.published, true))
-          .groupBy(sql`${updates.created_at}::date`)
-          .orderBy(desc(sql`${updates.created_at}::date`));
+        const latestPublishedAt = publishedUpdates[0]?.createdAt
+          ? toIsoString(publishedUpdates[0].createdAt)
+          : undefined;
 
-        const urls = [
+        const dateLastModifiedMap = new Map<string, string>();
+        for (const update of publishedUpdates) {
+          const dateKey = toDateKey(update.createdAt);
+          if (!dateLastModifiedMap.has(dateKey)) {
+            dateLastModifiedMap.set(dateKey, toIsoString(update.createdAt));
+          }
+        }
+
+        const urls: SitemapUrl[] = [
           {
             loc: absoluteUrl("/"),
+            lastmod: latestPublishedAt,
             changefreq: "hourly",
             priority: "1.0"
           },
           {
             loc: absoluteUrl("/today"),
+            lastmod: latestPublishedAt,
             changefreq: "hourly",
-            priority: "0.9"
+            priority: "0.95"
           },
           {
             loc: absoluteUrl("/week"),
+            lastmod: latestPublishedAt,
             changefreq: "daily",
-            priority: "0.8"
+            priority: "0.85"
           },
           {
             loc: absoluteUrl("/month"),
+            lastmod: latestPublishedAt,
             changefreq: "daily",
-            priority: "0.7"
+            priority: "0.75"
           },
-          ...publishedDates.map(({ date }) => ({
+          ...Array.from(dateLastModifiedMap.entries()).map(([date, lastmod]) => ({
             loc: absoluteUrl(`/date/${date}`),
+            lastmod,
             changefreq: "daily",
             priority: "0.7"
           })),
           ...publishedUpdates.map((update) => ({
             loc: absoluteUrl(`/update/${update.slug}`),
-            lastmod: new Date(update.createdAt).toISOString(),
-            changefreq: "weekly",
-            priority: "0.8"
+            lastmod: toIsoString(update.createdAt),
+            changefreq: "daily",
+            priority: "0.9"
           }))
         ];
 
@@ -65,8 +97,8 @@ export const Route = createFileRoute("/sitemap.xml")({
 ${urls
   .map(
     (url) => `  <url>
-    <loc>${url.loc}</loc>
-${url.lastmod ? `    <lastmod>${url.lastmod}</lastmod>\n` : ""}${url.changefreq ? `    <changefreq>${url.changefreq}</changefreq>\n` : ""}${url.priority ? `    <priority>${url.priority}</priority>\n` : ""}  </url>`
+    <loc>${escapeXml(url.loc)}</loc>
+${url.lastmod ? `    <lastmod>${escapeXml(url.lastmod)}</lastmod>\n` : ""}${url.changefreq ? `    <changefreq>${escapeXml(url.changefreq)}</changefreq>\n` : ""}${url.priority ? `    <priority>${escapeXml(url.priority)}</priority>\n` : ""}  </url>`
   )
   .join("\n")}
 </urlset>`;
@@ -74,7 +106,7 @@ ${url.lastmod ? `    <lastmod>${url.lastmod}</lastmod>\n` : ""}${url.changefreq 
         return new Response(body, {
           headers: {
             "Content-Type": "application/xml; charset=utf-8",
-            "Cache-Control": "public, max-age=3600"
+            "Cache-Control": "public, max-age=0, must-revalidate"
           }
         });
       }
