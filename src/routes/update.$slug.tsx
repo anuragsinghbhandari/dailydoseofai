@@ -75,6 +75,7 @@ function buildBreadcrumbSchema(update: any) {
 
 export const Route = createFileRoute("/update/$slug")({
   component: UpdateDetailPage,
+  remountDeps: ({ params }) => params.slug,
   head: ({ params, loaderData }) => {
     const update = loaderData?.update;
     const title = update?.title ? `${update.title} | AI Dose` : "AI Update | AI Dose";
