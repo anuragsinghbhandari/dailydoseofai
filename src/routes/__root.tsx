@@ -50,6 +50,15 @@ export const Route = createRootRoute({
         href: appCss
       },
       {
+        rel: "icon",
+        href: "/favicon.ico",
+        sizes: "any"
+      },
+      {
+        rel: "shortcut icon",
+        href: "/favicon.ico"
+      },
+      {
         rel: "alternate",
         type: "application/rss+xml",
         title: "AI Dose RSS Feed",
