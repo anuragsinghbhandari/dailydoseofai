@@ -4,9 +4,8 @@ import { StartClient } from "@tanstack/react-start/client";
 
 const rootElement = document.getElementById("app") as HTMLElement;
 
-ReactDOM.createRoot(rootElement).render(
+ReactDOM.hydrateRoot(rootElement,
   <React.StrictMode>
     <StartClient />
   </React.StrictMode>
 );
-

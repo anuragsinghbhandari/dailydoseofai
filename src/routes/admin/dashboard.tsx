@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { deleteUpdate, updateUpdate } from "@/server/updates";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatShortUtcDate } from "@/lib/dates";
 
 export const Route = createFileRoute("/admin/dashboard")({
   component: AdminDashboardPage
@@ -149,11 +150,7 @@ function AdminDashboardPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {new Date(update.created_at).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric"
-                      })}
+                      {formatShortUtcDate(update.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -190,4 +187,3 @@ function AdminDashboardPage() {
     </div>
   );
 }
-

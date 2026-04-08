@@ -17,6 +17,7 @@ import appCss from "@/index.css?url";
 import { getViewerState } from "@/server/auth-state";
 import { getRecentPublishedUpdates } from "@/server/queries";
 import { SITE_NAME } from "@/lib/seo";
+import { formatShortUtcDate } from "@/lib/dates";
 
 declare global {
   interface Window {
@@ -136,11 +137,7 @@ function RootLayout() {
                             {post.title}
                           </Link>
                           <p className="mt-1 text-muted-foreground">
-                            {new Date(post.created_at).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric"
-                            })}
+                            {formatShortUtcDate(post.created_at)}
                           </p>
                         </li>
                       ))}

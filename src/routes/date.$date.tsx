@@ -4,6 +4,7 @@ import { getUpdatesByDate } from "@/server/queries";
 import { UpdateList } from "@/components/update-list";
 import { ArrowLeft } from "lucide-react";
 import { createSeoHead } from "@/lib/seo";
+import { formatLongUtcDateWithWeekday, parseUtcDateKey } from "@/lib/dates";
 
 export const Route = createFileRoute("/date/$date")({
   head: ({ params }) =>
@@ -44,10 +45,8 @@ function DatePage() {
     staleTime: 5 * 60 * 1000
   });
 
-  const dateObj = new Date(`${date}T12:00:00`); // use noon to avoid timezone shifts throwing off the day
-  const displayDate = isNaN(dateObj.getTime()) ? date : dateObj.toLocaleDateString(undefined, {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
+  const dateObj = parseUtcDateKey(date);
+  const displayDate = dateObj ? formatLongUtcDateWithWeekday(dateObj) : date;
 
   return (
     <div className="container space-y-8 py-12">

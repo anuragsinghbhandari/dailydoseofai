@@ -14,6 +14,16 @@ import { useEffect, useMemo, useState } from "react";
 import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
 import { createSeoHead } from "@/lib/seo";
 import { ChevronLeft, ChevronRight, Rss } from "lucide-react";
+import {
+  formatLongUtcDate,
+  formatShortUtcDate,
+  formatUtcMonthYear,
+  formatUtcWeekday,
+  getCurrentUtcDate,
+  getUtcDateKey,
+  getUtcMonthStart,
+  getUtcWeekStart
+} from "@/lib/dates";
 
 export const Route = createFileRoute("/")({
   head: () =>
@@ -39,69 +49,53 @@ export const Route = createFileRoute("/")({
 function groupUpdatesByDate(updates: { id: string | number; created_at: Date | string }[]) {
   const grouped: Record<string, number> = {};
   for (const update of updates) {
-    const d = new Date(update.created_at);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const dateStr = getUtcDateKey(update.created_at);
     grouped[dateStr] = (grouped[dateStr] || 0) + 1;
   }
   return grouped;
 }
 
 function formatDateParam(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return getUtcDateKey(date);
 }
 
-function getWeekStart(date = new Date()) {
-  const d = new Date(date);
-  const dayOfWeek = d.getDay();
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  d.setDate(d.getDate() + diffToMonday);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function getMonthStart(date = new Date()) {
-  const d = new Date(date.getFullYear(), date.getMonth(), 1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function getCurrentWeekDays(anchor = new Date()) {
+function getCurrentWeekDays(anchor: Date) {
   const days = [];
-  const monday = getWeekStart(anchor);
-  const today = new Date();
+  const monday = getUtcWeekStart(anchor);
+  const todayKey = getUtcDateKey(getCurrentUtcDate());
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
-    const dateNum = d.getDate();
-    const isToday = d.toDateString() === today.toDateString();
+    d.setUTCDate(monday.getUTCDate() + i);
+    const dateStr = getUtcDateKey(d);
+    const dayName = formatUtcWeekday(d);
+    const dateNum = d.getUTCDate();
+    const isToday = dateStr === todayKey;
     days.push({ dateStr, dayName, dateNum, isToday });
   }
   return days;
 }
 
-function getCurrentMonthDays(anchor = new Date()) {
+function getCurrentMonthDays(anchor: Date) {
   const days = [];
-  const today = new Date();
-  const year = anchor.getFullYear();
-  const month = anchor.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startWeekday = firstDay.getDay();
+  const todayKey = getUtcDateKey(getCurrentUtcDate());
+  const year = anchor.getUTCFullYear();
+  const month = anchor.getUTCMonth();
+  const firstDay = new Date(Date.UTC(year, month, 1));
+  const lastDay = new Date(Date.UTC(year, month + 1, 0));
+  const startWeekday = firstDay.getUTCDay();
   const startDay = (startWeekday + 6) % 7;
 
   for (let i = 0; i < startDay; i++) {
     days.push(null);
   }
 
-  for (let i = 1; i <= lastDay.getDate(); i++) {
-    const d = new Date(year, month, i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
-    const dateNum = d.getDate();
-    const isToday = d.toDateString() === today.toDateString();
+  for (let i = 1; i <= lastDay.getUTCDate(); i++) {
+    const d = new Date(Date.UTC(year, month, i));
+    const dateStr = getUtcDateKey(d);
+    const dayName = formatUtcWeekday(d);
+    const dateNum = d.getUTCDate();
+    const isToday = dateStr === todayKey;
     days.push({ dateStr, dayName, dateNum, isToday });
   }
 
@@ -114,11 +108,11 @@ function getCurrentMonthDays(anchor = new Date()) {
 function HomePage() {
   const loaderData = Route.useLoaderData();
   const [isRestoringFeedState, setIsRestoringFeedState] = useState(false);
-  const [weekAnchor, setWeekAnchor] = useState(() => getWeekStart());
-  const [monthAnchor, setMonthAnchor] = useState(() => getMonthStart());
+  const [weekAnchor, setWeekAnchor] = useState(() => getUtcWeekStart());
+  const [monthAnchor, setMonthAnchor] = useState(() => getUtcMonthStart());
 
-  const isCurrentWeek = weekAnchor.getTime() === getWeekStart().getTime();
-  const isCurrentMonth = monthAnchor.getTime() === getMonthStart().getTime();
+  const isCurrentWeek = weekAnchor.getTime() === getUtcWeekStart().getTime();
+  const isCurrentMonth = monthAnchor.getTime() === getUtcMonthStart().getTime();
 
   useEffect(() => {
     const shouldRestore = consumeScrollRestoreFlag("/");
@@ -226,11 +220,7 @@ function HomePage() {
                       {update.title}
                     </Link>
                     <p className="text-sm text-muted-foreground">
-                      Published {new Date(update.created_at).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric"
-                      })}
+                      Published {formatLongUtcDate(update.created_at)}
                     </p>
                   </div>
                 </li>
@@ -283,9 +273,15 @@ function HomePage() {
                 {isCurrentWeek ? "This Week" : "Week View"}
               </h2>
               <p className="text-muted-foreground text-lg">
-                {weekAnchor.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                {formatShortUtcDate(weekAnchor)}
                 {" - "}
-                {new Date(weekAnchor.getFullYear(), weekAnchor.getMonth(), weekAnchor.getDate() + 6).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {formatShortUtcDate(
+                  new Date(Date.UTC(
+                    weekAnchor.getUTCFullYear(),
+                    weekAnchor.getUTCMonth(),
+                    weekAnchor.getUTCDate() + 6
+                  ))
+                )}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -294,8 +290,8 @@ function HomePage() {
                 size="sm"
                 onClick={() => setWeekAnchor((prev) => {
                   const next = new Date(prev);
-                  next.setDate(prev.getDate() - 7);
-                  return getWeekStart(next);
+                  next.setUTCDate(prev.getUTCDate() - 7);
+                  return getUtcWeekStart(next);
                 })}
               >
                 <ChevronLeft />
@@ -312,8 +308,8 @@ function HomePage() {
                   size="sm"
                   onClick={() => setWeekAnchor((prev) => {
                     const next = new Date(prev);
-                    next.setDate(prev.getDate() + 7);
-                    return getWeekStart(next);
+                    next.setUTCDate(prev.getUTCDate() + 7);
+                    return getUtcWeekStart(next);
                   })}
                 >
                   Next Week
@@ -357,14 +353,14 @@ function HomePage() {
                 {isCurrentMonth ? "This Month" : "Month View"}
               </h2>
               <p className="text-muted-foreground text-lg">
-                {monthAnchor.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                {formatUtcMonthYear(monthAnchor)}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                onClick={() => setMonthAnchor((prev) => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() - 1, 1)))}
               >
                 <ChevronLeft />
                 Previous Month
@@ -378,7 +374,7 @@ function HomePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                  onClick={() => setMonthAnchor((prev) => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() + 1, 1)))}
                 >
                   Next Month
                   <ChevronRight />

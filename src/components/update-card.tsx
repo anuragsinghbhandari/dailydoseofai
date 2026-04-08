@@ -9,6 +9,7 @@ import { type Update } from "@/server/schema";
 import { ImpactScore } from "./impact-score";
 import { CategoryBadge } from "./category-badge";
 import { saveCurrentScrollPosition } from "@/lib/scroll-memory";
+import { formatShortUtcDate } from "@/lib/dates";
 
 interface UpdateCardProps {
   update: Update;
@@ -42,11 +43,7 @@ export function UpdateCard({ update, featured, listContext, returnDate }: Update
                 {Math.max(1, Math.ceil((update.content?.split(' ').length || update.summary?.split(' ').length || 100) / 200))} min read
               </span>
               <span className="text-[10px] md:text-xs font-medium text-muted-foreground/80 px-2.5 py-1 bg-muted/40 rounded-full whitespace-nowrap">
-                {new Date(update.created_at).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric"
-                })}
+                {formatShortUtcDate(update.created_at)}
               </span>
             </div>
           </div>

@@ -24,6 +24,7 @@ import { markUpdateAsSeen } from "@/lib/local-seen";
 import { buildNavigationContextKey, getNavigationSlugs } from "@/lib/navigation-memory";
 import { absoluteUrl, createSeoHead, truncateDescription } from "@/lib/seo";
 import { toCategorySlug } from "@/lib/content-taxonomy";
+import { formatLongUtcDate, formatShortUtcDate, getUtcDateKey } from "@/lib/dates";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -291,11 +292,8 @@ function UpdateDetailPage() {
     (item: any, index: number, arr: any[]) => arr.findIndex((candidate) => candidate.slug === item.slug) === index
   ).slice(0, 4);
   const categorySlug = toCategorySlug(update.category);
-  const articleDate = new Date(update.created_at).toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  });
+  const articleDate = formatLongUtcDate(update.created_at);
+  const articleDateParam = getUtcDateKey(update.created_at);
 
   const slideVariants: any = {
     initial: (d: number) => ({ x: d > 0 ? 50 : -50, opacity: 0 }),
@@ -361,7 +359,7 @@ function UpdateDetailPage() {
                   </Link>
                   <Link
                     to="/date/$date"
-                    params={{ date: new Date(update.created_at).toISOString().slice(0, 10) }}
+                    params={{ date: articleDateParam }}
                     className="text-sm font-medium text-muted-foreground hover:text-primary"
                   >
                     {articleDate}
@@ -499,11 +497,7 @@ function UpdateDetailPage() {
                           {item.title}
                         </Link>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {new Date(item.created_at).toLocaleDateString(undefined, {
-                            month: "long",
-                            day: "numeric",
-                            year: "numeric"
-                          })}
+                          {formatLongUtcDate(item.created_at)}
                         </p>
                       </li>
                     ))}
@@ -534,7 +528,7 @@ function UpdateDetailPage() {
                   </div>
                   <div>
                     <span className="font-semibold block mb-1">Published</span>
-                    <Link to="/date/$date" params={{ date: new Date(update.created_at).toISOString().slice(0, 10) }} className="text-primary hover:underline">
+                    <Link to="/date/$date" params={{ date: articleDateParam }} className="text-primary hover:underline">
                       {articleDate}
                     </Link>
                   </div>
@@ -571,11 +565,7 @@ function UpdateDetailPage() {
                             {item.title}
                           </Link>
                           <p className="mt-1 text-muted-foreground">
-                            {new Date(item.created_at).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric"
-                            })}
+                            {formatShortUtcDate(item.created_at)}
                           </p>
                         </li>
                       ))}

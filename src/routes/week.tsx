@@ -6,6 +6,7 @@ import { createSeoHead } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { z } from "zod";
+import { formatShortUtcDate, getUtcDateKey, getUtcWeekStart, parseUtcDateKey } from "@/lib/dates";
 
 export const Route = createFileRoute("/week")({
   validateSearch: z.object({
@@ -26,33 +27,23 @@ export const Route = createFileRoute("/week")({
 });
 
 function formatDateParam(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function getWeekStart(anchor?: string) {
-  const base = anchor ? new Date(`${anchor}T00:00:00`) : new Date();
-  const day = base.getDay();
-  const diff = base.getDate() - day + (day === 0 ? -6 : 1);
-  const start = new Date(base);
-  start.setDate(diff);
-  start.setHours(0, 0, 0, 0);
-  return start;
+  return getUtcDateKey(date);
 }
 
 function WeekPage() {
   const loaderData = Route.useLoaderData();
   const { date } = Route.useSearch();
-  const weekStart = getWeekStart(date);
+  const weekStart = getUtcWeekStart(date ? parseUtcDateKey(date) ?? undefined : undefined);
   const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
 
   const previousWeek = new Date(weekStart);
-  previousWeek.setDate(weekStart.getDate() - 7);
+  previousWeek.setUTCDate(weekStart.getUTCDate() - 7);
 
   const nextWeek = new Date(weekStart);
-  nextWeek.setDate(weekStart.getDate() + 7);
+  nextWeek.setUTCDate(weekStart.getUTCDate() + 7);
 
-  const currentWeekStart = getWeekStart();
+  const currentWeekStart = getUtcWeekStart();
   const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
 
   const query = useQuery({
@@ -70,9 +61,9 @@ function WeekPage() {
             {isCurrentWeek ? "This week's top AI updates" : "Top AI updates for the selected week"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {formatShortUtcDate(weekStart)}
             {" - "}
-            {weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {formatShortUtcDate(weekEnd)}
           </p>
         </div>
 

@@ -48,8 +48,8 @@ export function UpdateList({ updates, isLoading, listContext, returnDate, filter
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [displayCount, setDisplayCount] = useState(20);
-  const [showUnseenOnly, setShowUnseenOnly] = useState(() => getStoredShowUnseenOnly(filterStorageKey));
-  const [guestSeenUpdateIds, setGuestSeenUpdateIds] = useState<string[]>(() => getInitialGuestSeenUpdateIds());
+  const [showUnseenOnly, setShowUnseenOnly] = useState(false);
+  const [guestSeenUpdateIds, setGuestSeenUpdateIds] = useState<string[]>([]);
   const previousSessionUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -63,6 +63,10 @@ export function UpdateList({ updates, isLoading, listContext, returnDate, filter
   useEffect(() => {
     setShowUnseenOnly(getStoredShowUnseenOnly(filterStorageKey));
   }, [filterStorageKey]);
+
+  useEffect(() => {
+    setGuestSeenUpdateIds(getInitialGuestSeenUpdateIds());
+  }, []);
 
   useEffect(() => {
     if (session || typeof window === "undefined") {

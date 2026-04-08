@@ -6,6 +6,7 @@ import { createSeoHead } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { z } from "zod";
+import { formatUtcMonthYear, getUtcDateKey, getUtcMonthStart, parseUtcDateKey } from "@/lib/dates";
 
 export const Route = createFileRoute("/month")({
   validateSearch: z.object({
@@ -26,25 +27,18 @@ export const Route = createFileRoute("/month")({
 });
 
 function formatDateParam(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function getMonthStart(anchor?: string) {
-  const base = anchor ? new Date(`${anchor}T00:00:00`) : new Date();
-  const start = new Date(base.getFullYear(), base.getMonth(), 1);
-  start.setHours(0, 0, 0, 0);
-  return start;
+  return getUtcDateKey(date);
 }
 
 function MonthPage() {
   const loaderData = Route.useLoaderData();
   const { date } = Route.useSearch();
-  const monthStart = getMonthStart(date);
+  const monthStart = getUtcMonthStart(date ? parseUtcDateKey(date) ?? undefined : undefined);
 
-  const previousMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1);
-  const nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+  const previousMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() - 1, 1));
+  const nextMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
 
-  const currentMonthStart = getMonthStart();
+  const currentMonthStart = getUtcMonthStart();
   const isCurrentMonth = monthStart.getTime() === currentMonthStart.getTime();
 
   const query = useQuery({
@@ -62,7 +56,7 @@ function MonthPage() {
             {isCurrentMonth ? "This month's top AI updates" : "Top AI updates for the selected month"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+            {formatUtcMonthYear(monthStart)}
           </p>
         </div>
 

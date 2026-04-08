@@ -5,6 +5,7 @@ import { useSession } from "@/lib/auth";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { formatShortUtcDate } from "@/lib/dates";
 
 export function CommentsSection({ updateId }: { updateId: string }) {
     const { data: session } = useSession();
@@ -74,7 +75,7 @@ export function CommentsSection({ updateId }: { updateId: string }) {
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="font-semibold text-sm">{comment.user?.name || "Anonymous"}</span>
                                     <span className="text-xs text-muted-foreground">
-                                        {new Date(comment.created_at).toLocaleDateString()}
+                                        {formatShortUtcDate(comment.created_at)}
                                     </span>
                                 </div>
                                 <p className="text-sm leading-relaxed text-foreground/90">{comment.content}</p>
