@@ -165,56 +165,38 @@ function DeferredGoogleAnalytics() {
       return;
     }
 
-    let canceled = false;
-    let timeoutId: number | undefined;
-    let idleId: number | undefined;
-
-    const initializeAnalytics = () => {
-      const existingScript = document.querySelector<HTMLScriptElement>("script[data-gtag-id=" + GOOGLE_ANALYTICS_ID + "]");
-
-      if (existingScript && window.gtag) {
-        setIsReady(true);
-        return;
-      }
-
-      const script = existingScript ?? document.createElement("script");
-      script.async = true;
-      script.src = "https://www.googletagmanager.com/gtag/js?id=" + GOOGLE_ANALYTICS_ID;
-      script.dataset.gtagId = GOOGLE_ANALYTICS_ID;
-
-      script.onload = () => {
-        if (canceled) {
-          return;
-        }
-
-        window.dataLayer = window.dataLayer || [];
-        window.gtag = (...args: unknown[]) => {
-          window.dataLayer.push(args);
-        };
-        window.gtag("js", new Date());
-        window.gtag("config", GOOGLE_ANALYTICS_ID, { send_page_view: false });
-        setIsReady(true);
-      };
-
-      if (!existingScript) {
-        document.head.appendChild(script);
-      }
-    };
-
-    if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(initializeAnalytics, { timeout: 2000 });
-    } else {
-      timeoutId = window.setTimeout(initializeAnalytics, 1500);
+    if (window.gtag) {
+      setIsReady(true);
+      return;
     }
 
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = (...args: unknown[]) => {
+      window.dataLayer.push(args);
+    };
+    window.gtag("js", new Date());
+    window.gtag("config", GOOGLE_ANALYTICS_ID, { send_page_view: false });
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      `script[data-gtag-id="${GOOGLE_ANALYTICS_ID}"]`
+    );
+
+    if (existingScript) {
+      setIsReady(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://www.googletagmanager.com/gtag/js?id=" + GOOGLE_ANALYTICS_ID;
+    script.dataset.gtagId = GOOGLE_ANALYTICS_ID;
+    script.onload = () => {
+      setIsReady(true);
+    };
+    document.head.appendChild(script);
+
     return () => {
-      canceled = true;
-      if (typeof timeoutId !== "undefined") {
-        window.clearTimeout(timeoutId);
-      }
-      if (typeof idleId !== "undefined" && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleId);
-      }
+      script.onload = null;
     };
   }, []);
 
@@ -225,12 +207,12 @@ function DeferredGoogleAnalytics() {
 
     const pagePath = window.location.pathname + window.location.search + window.location.hash;
 
-    window.gtag("config", GOOGLE_ANALYTICS_ID, {
+    window.gtag("event", "page_view", {
       page_path: pagePath,
       page_location: window.location.href,
       page_title: document.title,
     });
-  }, [isReady, location.pathname, location.href]);
+  }, [isReady, location.href]);
 
   return null;
 }
