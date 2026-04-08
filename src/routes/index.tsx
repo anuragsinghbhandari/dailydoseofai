@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
 import { createSeoHead } from "@/lib/seo";
 import { ChevronLeft, ChevronRight, Rss } from "lucide-react";
+import { getFeaturedArticles } from "@/server/articles";
 import {
   formatLongUtcDate,
   formatShortUtcDate,
@@ -42,7 +43,8 @@ export const Route = createFileRoute("/")({
       getRecentPublishedUpdates({ data: { limit: 15 } }),
       getPublishedCategories()
     ]);
-    return { today, week, month, latest, categories };
+    const articles = await (getFeaturedArticles as any)({ data: { limit: 3 } });
+    return { today, week, month, latest, categories, articles };
   }
 });
 
@@ -196,32 +198,34 @@ function HomePage() {
               <div>
                 <h2 className="text-3xl font-heading font-bold tracking-tight">Latest Articles</h2>
                 <p className="mt-2 text-muted-foreground text-base md:text-lg">
-                  Freshly published AI stories linked directly from the homepage for faster discovery.
+                  Longer, search-first AI guides selected for durable relevance and deeper reading.
                 </p>
               </div>
-              <a href="/rss.xml" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+              <Link
+                to="/article"
+                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              >
                 <Rss className="h-4 w-4" />
-                RSS Feed
-              </a>
+                View all
+              </Link>
             </div>
 
             <ol className="space-y-3">
-              {loaderData.latest.map((update, index) => (
-                <li key={update.id} className="grid gap-2 border-b border-border/30 pb-3 last:border-b-0 last:pb-0 md:grid-cols-[auto_1fr] md:gap-4">
+              {loaderData.articles.map((article, index) => (
+                <li key={article.id} className="grid gap-2 border-b border-border/30 pb-3 last:border-b-0 last:pb-0 md:grid-cols-[auto_1fr] md:gap-4">
                   <span className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground/80">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <div className="space-y-1">
                     <Link
-                      to="/update/$slug"
-                      params={{ slug: update.slug }}
+                      to="/article/$slug"
+                      params={{ slug: article.slug }}
                       className="text-base font-semibold leading-snug text-foreground transition-colors hover:text-primary"
                     >
-                      {update.title}
+                      {article.title}
                     </Link>
-                    <p className="text-sm text-muted-foreground">
-                      Published {formatLongUtcDate(update.created_at)}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{article.excerpt}</p>
+                    <p className="text-sm text-muted-foreground">Published {formatLongUtcDate(article.publishedAt)}</p>
                   </div>
                 </li>
               ))}

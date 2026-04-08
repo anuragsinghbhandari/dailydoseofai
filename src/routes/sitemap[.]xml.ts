@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { absoluteUrl } from "@/lib/seo";
 import { db } from "@/server/db";
 import { updates } from "@/server/schema";
+import { listPublishedArticles } from "@/server/article-store";
 
 type SitemapUrl = {
   loc: string;
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
+        const articles = await listPublishedArticles();
         const publishedUpdates = await db
           .select({
             slug: updates.slug,
@@ -67,6 +69,12 @@ export const Route = createFileRoute("/sitemap.xml")({
             priority: "0.95"
           },
           {
+            loc: absoluteUrl("/article"),
+            lastmod: articles[0]?.updatedAt,
+            changefreq: "weekly",
+            priority: "0.88"
+          },
+          {
             loc: absoluteUrl("/week"),
             lastmod: latestPublishedAt,
             changefreq: "daily",
@@ -89,6 +97,12 @@ export const Route = createFileRoute("/sitemap.xml")({
             lastmod: toIsoString(update.createdAt),
             changefreq: "daily",
             priority: "0.9"
+          })),
+          ...articles.map((article) => ({
+            loc: absoluteUrl(`/article/${article.slug}`),
+            lastmod: article.updatedAt,
+            changefreq: "weekly",
+            priority: "0.92"
           }))
         ];
 

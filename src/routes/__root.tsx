@@ -18,6 +18,7 @@ import { getViewerState } from "@/server/auth-state";
 import { getRecentPublishedUpdates } from "@/server/queries";
 import { SITE_NAME } from "@/lib/seo";
 import { formatShortUtcDate } from "@/lib/dates";
+import { getFeaturedArticles } from "@/server/articles";
 
 declare global {
   interface Window {
@@ -41,7 +42,8 @@ export const Route = createRootRoute({
       getViewerState(),
       getRecentPublishedUpdates({ data: { limit: 5 } })
     ]);
-    return { viewer, recentPosts };
+    const featuredArticles = await (getFeaturedArticles as any)({ data: { limit: 2 } });
+    return { viewer, recentPosts, featuredArticles };
   },
   head: () => ({
     meta: [
@@ -89,7 +91,7 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
-  const { viewer, recentPosts } = Route.useLoaderData();
+  const { viewer, recentPosts, featuredArticles } = Route.useLoaderData();
   const [queryClient] = React.useState(() => new QueryClient());
 
   return (
@@ -125,6 +127,9 @@ function RootLayout() {
                       <Link to="/" className="text-foreground hover:text-primary hover:underline">
                         Home
                       </Link>
+                      <Link to="/article" className="text-foreground hover:text-primary hover:underline">
+                        Article
+                      </Link>
                       <Link to="/today" className="text-foreground hover:text-primary hover:underline">
                         Today
                       </Link>
@@ -137,25 +142,48 @@ function RootLayout() {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                      Recent Posts
-                    </h2>
-                    <ul className="space-y-3 text-sm">
-                      {recentPosts.map((post) => (
-                        <li key={post.id} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
-                          <Link
-                            to="/update/$slug"
-                            params={{ slug: post.slug }}
-                            className="font-medium text-foreground hover:text-primary hover:underline"
-                          >
-                            {post.title}
-                          </Link>
-                          <p className="mt-1 text-muted-foreground">
-                            {formatShortUtcDate(post.created_at)}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
+                    <div>
+                      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                        Featured Articles
+                      </h2>
+                      <ul className="mt-3 space-y-3 text-sm">
+                        {featuredArticles.map((article) => (
+                          <li key={article.id} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
+                            <Link
+                              to="/article/$slug"
+                              params={{ slug: article.slug }}
+                              className="font-medium text-foreground hover:text-primary hover:underline"
+                            >
+                              {article.title}
+                            </Link>
+                            <p className="mt-1 text-muted-foreground">
+                              {formatShortUtcDate(article.publishedAt)}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                        Recent Updates
+                      </h2>
+                      <ul className="mt-3 space-y-3 text-sm">
+                        {recentPosts.map((post) => (
+                          <li key={post.id} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
+                            <Link
+                              to="/update/$slug"
+                              params={{ slug: post.slug }}
+                              className="font-medium text-foreground hover:text-primary hover:underline"
+                            >
+                              {post.title}
+                            </Link>
+                            <p className="mt-1 text-muted-foreground">
+                              {formatShortUtcDate(post.created_at)}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </footer>

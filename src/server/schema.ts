@@ -25,6 +25,31 @@ export const updates = pgTable("updates", {
     .defaultNow()
 });
 
+export const articles = pgTable("articles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  seo_title: text("seo_title").notNull(),
+  description: text("description").notNull(),
+  excerpt: text("excerpt").notNull(),
+  category: text("category").notNull(),
+  reading_time_minutes: integer("reading_time_minutes").notNull().default(5),
+  keywords: text("keywords").notNull().default("[]"),
+  table_of_contents: text("table_of_contents").notNull().default("[]"),
+  sections: text("sections").notNull().default("[]"),
+  published: boolean("published").notNull().default(false),
+  featured: boolean("featured").notNull().default(false),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  published_at: timestamp("published_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+});
+
 export const user = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -146,3 +171,5 @@ export const user_views = pgTable("user_views", {
 
 export type Update = typeof updates.$inferSelect;
 export type NewUpdate = typeof updates.$inferInsert;
+export type Article = typeof articles.$inferSelect;
+export type NewArticle = typeof articles.$inferInsert;

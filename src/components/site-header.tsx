@@ -51,6 +51,14 @@ export function SiteHeader({ initialViewer }: SiteHeaderProps) {
                         >
                             Home
                         </Link>
+                        <Link
+                            to="/article"
+                            className="text-sm font-medium transition-colors hover:text-primary"
+                            activeProps={{ className: "text-foreground font-semibold" }}
+                            inactiveProps={{ className: "text-foreground/60" }}
+                        >
+                            Article
+                        </Link>
                         {session && (
                             <Link
                                 to="/bookmarks"

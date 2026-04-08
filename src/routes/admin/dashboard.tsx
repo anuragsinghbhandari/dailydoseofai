@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getAllUpdates } from "@/server/queries";
+import { deleteArticle, getAllArticles, updateArticle } from "@/server/articles";
 import {
   Table,
   TableBody,
@@ -29,6 +30,10 @@ function AdminDashboardPage() {
   const listQuery = useQuery({
     queryKey: ["admin", "updates"],
     queryFn: () => getAllUpdates()
+  });
+  const articleListQuery = useQuery({
+    queryKey: ["admin", "articles"],
+    queryFn: () => getAllArticles()
   });
 
   const publishMutation = useMutation({
@@ -63,6 +68,36 @@ function AdminDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["admin", "updates"] });
     }
   });
+  const articlePublishMutation = useMutation({
+    mutationFn: (payload: { id: string; published: boolean }) =>
+      (updateArticle as any)({
+        data: {
+          id: payload.id,
+          data: { published: payload.published }
+        }
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "articles"] });
+    }
+  });
+  const articleFeaturedMutation = useMutation({
+    mutationFn: (payload: { id: string; featured: boolean }) =>
+      (updateArticle as any)({
+        data: {
+          id: payload.id,
+          data: { featured: payload.featured }
+        }
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "articles"] });
+    }
+  });
+  const articleDeleteMutation = useMutation({
+    mutationFn: (id: string) => (deleteArticle as any)({ data: id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "articles"] });
+    }
+  });
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -71,6 +106,9 @@ function AdminDashboardPage() {
         <div className="flex items-center space-x-2">
           <Link to="/admin/create-update">
             <Button>Create update</Button>
+          </Link>
+          <Link to="/admin/create-article">
+            <Button variant="outline">Create article</Button>
           </Link>
         </div>
       </div>
@@ -170,6 +208,108 @@ function AdminDashboardPage() {
                           onClick={() => {
                             if (window.confirm("Are you sure you want to delete this update?")) {
                               deleteMutation.mutate(update.id);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+
+        <div className="rounded-md border bg-card text-card-foreground shadow">
+          {articleListQuery.isLoading ? (
+            <div className="p-4">
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[420px]">Article</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Featured</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {articleListQuery.data?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      No articles found.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {articleListQuery.data?.map((article) => (
+                  <TableRow key={article.id}>
+                    <TableCell className="font-medium">
+                      <div className="line-clamp-2">{article.title}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{article.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={article.published}
+                          disabled={articlePublishMutation.isPending}
+                          onCheckedChange={(checked) =>
+                            articlePublishMutation.mutate({
+                              id: article.id,
+                              published: checked
+                            })
+                          }
+                        />
+                        <span className="text-sm text-muted-foreground hidden lg:inline-block">
+                          {article.published ? "Published" : "Draft"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={article.featured}
+                          disabled={articleFeaturedMutation.isPending}
+                          onCheckedChange={(checked) =>
+                            articleFeaturedMutation.mutate({
+                              id: article.id,
+                              featured: checked
+                            })
+                          }
+                        />
+                        <span className="text-sm text-muted-foreground hidden lg:inline-block">
+                          {article.featured ? "Yes" : "No"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {formatShortUtcDate(article.published_at)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Link
+                          to="/admin/edit-article/$id"
+                          params={{ id: article.id }}
+                        >
+                          <Button size="sm" variant="ghost">
+                            Edit
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={articleDeleteMutation.isPending}
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to delete this article?")) {
+                              articleDeleteMutation.mutate(article.id);
                             }
                           }}
                         >

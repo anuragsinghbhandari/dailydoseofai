@@ -15,6 +15,13 @@
       "when": 1773254093445,
       "tag": "0001_uneven_wildside",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775632200000,
+      "tag": "0002_neat_ai_articles",
+      "breakpoints": true
     }
   ]
 }
