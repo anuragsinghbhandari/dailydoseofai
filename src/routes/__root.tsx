@@ -27,6 +27,13 @@ declare global {
 }
 
 const GOOGLE_ANALYTICS_ID = "G-MWC6DGEDY4";
+const googleAnalyticsBootstrap = `
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  window.gtag = gtag;
+  gtag('js', new Date());
+  gtag('config', '${GOOGLE_ANALYTICS_ID}', { send_page_view: false });
+`;
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -89,10 +96,17 @@ function RootLayout() {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}
+        />
+        <script
+          dangerouslySetInnerHTML={{ __html: googleAnalyticsBootstrap }}
+        />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <DeferredGoogleAnalytics />
+          <GoogleAnalyticsPageTracker />
           <ThemeProvider defaultTheme="system">
             <StreakCelebrationOverlay initialViewer={viewer} />
             <div className="relative flex min-h-screen flex-col bg-background">
@@ -156,52 +170,11 @@ function RootLayout() {
   );
 }
 
-function DeferredGoogleAnalytics() {
+function GoogleAnalyticsPageTracker() {
   const location = useLocation();
-  const [isReady, setIsReady] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (window.gtag) {
-      setIsReady(true);
-      return;
-    }
-
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = (...args: unknown[]) => {
-      window.dataLayer.push(args);
-    };
-    window.gtag("js", new Date());
-    window.gtag("config", GOOGLE_ANALYTICS_ID, { send_page_view: false });
-
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      `script[data-gtag-id="${GOOGLE_ANALYTICS_ID}"]`
-    );
-
-    if (existingScript) {
-      setIsReady(true);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://www.googletagmanager.com/gtag/js?id=" + GOOGLE_ANALYTICS_ID;
-    script.dataset.gtagId = GOOGLE_ANALYTICS_ID;
-    script.onload = () => {
-      setIsReady(true);
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      script.onload = null;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined" || typeof window.gtag !== "function" || !isReady) {
+    if (typeof window === "undefined" || typeof window.gtag !== "function") {
       return;
     }
 
@@ -212,7 +185,7 @@ function DeferredGoogleAnalytics() {
       page_location: window.location.href,
       page_title: document.title,
     });
-  }, [isReady, location.href]);
+  }, [location.href]);
 
   return null;
 }
