@@ -57,7 +57,23 @@ export function SiteHeader({ initialViewer }: SiteHeaderProps) {
                             activeProps={{ className: "text-foreground font-semibold" }}
                             inactiveProps={{ className: "text-foreground/60" }}
                         >
-                            Article
+                            Articles
+                        </Link>
+                        <Link
+                            to="/about"
+                            className="text-sm font-medium transition-colors hover:text-primary"
+                            activeProps={{ className: "text-foreground font-semibold" }}
+                            inactiveProps={{ className: "text-foreground/60" }}
+                        >
+                            About
+                        </Link>
+                        <Link
+                            to="/contact"
+                            className="hidden text-sm font-medium transition-colors hover:text-primary md:inline-flex"
+                            activeProps={{ className: "hidden text-foreground font-semibold md:inline-flex" }}
+                            inactiveProps={{ className: "hidden text-foreground/60 md:inline-flex" }}
+                        >
+                            Contact
                         </Link>
                         {session && (
                             <Link

@@ -4,6 +4,7 @@ import { getUserGlobalEngagement, getArticleEngagement, toggleLike, toggleBookma
 import { Button } from "./ui/button";
 import { useSession } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 
 interface EngagementBarProps {
     updateId: string;
@@ -34,6 +35,7 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
     const isShorts = variant === "shorts";
 
     const requireLogin = () => {
+        trackEvent("engagement_login_prompt", { update_id: updateId });
         toast({
             title: "Sign in required",
             description: "Log in to like and bookmark updates.",
@@ -118,6 +120,7 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
                     onClick={() => {
                         if (!session) return requireLogin();
                         if (likeMutation.isPending) return;
+                        trackEvent("update_like_click", { update_id: updateId, active: !liked });
                         likeMutation.mutate();
                     }}
                 >
@@ -134,6 +137,7 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
                     onClick={() => {
                         if (!session) return requireLogin();
                         if (bookmarkMutation.isPending) return;
+                        trackEvent("update_bookmark_click", { update_id: updateId, active: !bookmarked });
                         bookmarkMutation.mutate();
                     }}
                 >
@@ -156,6 +160,7 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
                 onClick={() => {
                     if (!session) return requireLogin();
                     if (likeMutation.isPending) return;
+                    trackEvent("update_like_click", { update_id: updateId, active: !liked });
                     likeMutation.mutate();
                 }}
             >
@@ -171,6 +176,7 @@ export function EngagementBar({ updateId, variant = "default" }: EngagementBarPr
                 onClick={() => {
                     if (!session) return requireLogin();
                     if (bookmarkMutation.isPending) return;
+                    trackEvent("update_bookmark_click", { update_id: updateId, active: !bookmarked });
                     bookmarkMutation.mutate();
                 }}
             >

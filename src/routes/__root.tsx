@@ -19,6 +19,7 @@ import { getRecentPublishedUpdates } from "@/server/queries";
 import { SITE_NAME } from "@/lib/seo";
 import { formatShortUtcDate } from "@/lib/dates";
 import { getFeaturedArticles } from "@/server/articles";
+import { buildOrganizationSchema, buildWebsiteSchema } from "@/lib/site";
 
 declare global {
   interface Window {
@@ -74,6 +75,16 @@ export const Route = createRootRoute({
         title: "AI Dose RSS Feed",
         href: "/rss.xml"
       }
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(buildWebsiteSchema())
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(buildOrganizationSchema())
+      }
     ]
   }),
   component: RootLayout,
@@ -128,10 +139,28 @@ function RootLayout() {
                         Home
                       </Link>
                       <Link to="/article" className="text-foreground hover:text-primary hover:underline">
-                        Article
+                        Articles
+                      </Link>
+                      <Link to="/about" className="text-foreground hover:text-primary hover:underline">
+                        About
+                      </Link>
+                      <Link to="/contact" className="text-foreground hover:text-primary hover:underline">
+                        Contact
                       </Link>
                       <Link to="/today" className="text-foreground hover:text-primary hover:underline">
                         Today
+                      </Link>
+                      <Link to="/editorial-policy" className="text-foreground hover:text-primary hover:underline">
+                        Editorial Policy
+                      </Link>
+                      <Link to="/privacy" className="text-foreground hover:text-primary hover:underline">
+                        Privacy
+                      </Link>
+                      <Link to="/terms" className="text-foreground hover:text-primary hover:underline">
+                        Terms
+                      </Link>
+                      <Link to="/disclaimer" className="text-foreground hover:text-primary hover:underline">
+                        Disclaimer
                       </Link>
                       <a href="/rss.xml" className="text-foreground hover:text-primary hover:underline">
                         RSS Feed

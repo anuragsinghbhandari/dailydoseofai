@@ -10,6 +10,7 @@ import { ImpactScore } from "./impact-score";
 import { CategoryBadge } from "./category-badge";
 import { saveCurrentScrollPosition } from "@/lib/scroll-memory";
 import { formatShortUtcDate } from "@/lib/dates";
+import { trackEvent } from "@/lib/analytics";
 
 interface UpdateCardProps {
   update: Update;
@@ -27,6 +28,13 @@ export function UpdateCard({ update, featured, listContext, returnDate }: Update
       params={{ slug: update.slug }}
       search={listContext || returnDate ? { ...(listContext ? { list: listContext } : {}), ...(returnDate ? { date: returnDate } : {}) } : undefined}
       onClick={() => {
+        trackEvent("update_card_click", {
+          update_id: update.id,
+          slug: update.slug,
+          category: update.category,
+          source_list: listContext || returnDate || "home",
+          seen: Boolean(isSeen)
+        });
         if (!listContext && typeof window !== "undefined" && window.location.pathname === "/") {
           saveCurrentScrollPosition();
         }

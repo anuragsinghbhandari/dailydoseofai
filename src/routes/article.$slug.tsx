@@ -4,6 +4,8 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import type { ArticleRecord } from "@/lib/articles";
 import { absoluteUrl, createSeoHead } from "@/lib/seo";
 import { formatLongUtcDate } from "@/lib/dates";
+import { trackEvent } from "@/lib/analytics";
+import { useContentEngagement } from "@/hooks/use-content-engagement";
 import { getRecentPublishedUpdates } from "@/server/queries";
 import { getArticleBySlug, getRelatedArticles } from "@/server/articles";
 
@@ -31,34 +33,6 @@ function buildBreadcrumbSchema(article: ArticleRecord) {
         item: absoluteUrl(`/article/${article.slug}`)
       }
     ]
-  };
-}
-
-function buildEventSchema() {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    name: "IJCAI-ECAI 2026",
-    startDate: "2026-08-15",
-    endDate: "2026-08-21",
-    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    eventStatus: "https://schema.org/EventScheduled",
-    location: {
-      "@type": "Place",
-      name: "Bremen, Germany",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: "Bremen",
-        addressCountry: "DE"
-      }
-    },
-    description:
-      "The 35th International Joint Conference on Artificial Intelligence, held jointly with the European Conference on Artificial Intelligence.",
-    organizer: {
-      "@type": "Organization",
-      name: "IJCAI",
-      url: "https://www.ijcai.org/"
-    }
   };
 }
 
@@ -118,10 +92,6 @@ export const Route = createFileRoute("/article/$slug")({
         {
           type: "application/ld+json",
           children: JSON.stringify(buildBreadcrumbSchema(article))
-        },
-        {
-          type: "application/ld+json",
-          children: JSON.stringify(buildEventSchema())
         }
       ]
     };
@@ -131,6 +101,14 @@ export const Route = createFileRoute("/article/$slug")({
 
 function ArticleDetailPage() {
   const { article, relatedArticles, latestUpdates } = Route.useLoaderData();
+  const { slug } = Route.useParams();
+
+  useContentEngagement({
+    contentType: "article",
+    slug: article?.slug ?? slug,
+    category: article?.category,
+    enabled: Boolean(article)
+  });
 
   if (!article) {
     return (
@@ -139,6 +117,9 @@ function ArticleDetailPage() {
       </div>
     );
   }
+
+  const nextArticle = relatedArticles[0] ?? null;
+  const nextUpdate = latestUpdates[0] ?? null;
 
   return (
     <div className="container max-w-6xl py-8 md:py-12">
@@ -215,6 +196,26 @@ function ArticleDetailPage() {
             </ol>
           </div>
 
+          <div className="mt-8 rounded-[1.75rem] border border-primary/20 bg-primary/5 p-6 shadow-sm md:p-8">
+            <h2 className="text-2xl font-heading font-bold tracking-tight">Editorial note</h2>
+            <p className="mt-4 text-base leading-7 text-muted-foreground">
+              AI Dose articles are written as original editorial explainers and updated when
+              material facts change. Review the{" "}
+              <Link to="/editorial-policy" className="font-medium text-primary hover:underline">
+                Editorial Policy
+              </Link>
+              ,{" "}
+              <Link to="/disclaimer" className="font-medium text-primary hover:underline">
+                Disclaimer
+              </Link>
+              , or{" "}
+              <Link to="/contact" className="font-medium text-primary hover:underline">
+                Contact
+              </Link>{" "}
+              page if you need to review sourcing or request a correction.
+            </p>
+          </div>
+
           <div className="mt-8 space-y-8">
             {article.sections.map((section) => (
               <section
@@ -241,6 +242,55 @@ function ArticleDetailPage() {
               </section>
             ))}
           </div>
+
+          {(nextArticle || nextUpdate) && (
+            <section className="mt-8 rounded-[1.75rem] border border-primary/20 bg-primary/5 p-6 shadow-sm md:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+                Keep reading
+              </p>
+              <div className="mt-4 grid gap-5 md:grid-cols-2">
+                {nextArticle && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Another guide</p>
+                    <h2 className="text-2xl font-heading font-bold tracking-tight">
+                      <Link
+                        to="/article/$slug"
+                        params={{ slug: nextArticle.slug }}
+                        className="transition-colors hover:text-primary"
+                        onClick={() => trackEvent("article_next_article_click", {
+                          from_slug: article.slug,
+                          to_slug: nextArticle.slug,
+                          category: nextArticle.category
+                        })}
+                      >
+                        {nextArticle.title}
+                      </Link>
+                    </h2>
+                  </div>
+                )}
+
+                {nextUpdate && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Latest update</p>
+                    <h2 className="text-2xl font-heading font-bold tracking-tight">
+                      <Link
+                        to="/update/$slug"
+                        params={{ slug: nextUpdate.slug }}
+                        className="transition-colors hover:text-primary"
+                        onClick={() => trackEvent("article_latest_update_click", {
+                          from_slug: article.slug,
+                          to_slug: nextUpdate.slug,
+                          category: nextUpdate.category
+                        })}
+                      >
+                        {nextUpdate.title}
+                      </Link>
+                    </h2>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
         </article>
 
         <aside className="space-y-6">
@@ -256,6 +306,11 @@ function ArticleDetailPage() {
                       to="/article/$slug"
                       params={{ slug: relatedArticle.slug }}
                       className="font-medium text-foreground transition-colors hover:text-primary"
+                      onClick={() => trackEvent("article_related_click", {
+                        from_slug: article.slug,
+                        to_slug: relatedArticle.slug,
+                        category: relatedArticle.category
+                      })}
                     >
                       {relatedArticle.title}
                     </Link>
@@ -283,6 +338,11 @@ function ArticleDetailPage() {
                     to="/update/$slug"
                     params={{ slug: update.slug }}
                     className="font-medium text-foreground transition-colors hover:text-primary"
+                    onClick={() => trackEvent("article_sidebar_update_click", {
+                      from_slug: article.slug,
+                      to_slug: update.slug,
+                      category: update.category
+                    })}
                   >
                     {update.title}
                   </Link>

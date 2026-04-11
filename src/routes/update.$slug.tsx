@@ -20,11 +20,13 @@ import { EngagementBar } from "@/components/engagement-bar";
 import { CommentsSection } from "@/components/comments-section";
 import { recordView } from "@/server/engagement";
 import { useSession } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 import { markUpdateAsSeen } from "@/lib/local-seen";
 import { buildNavigationContextKey, getNavigationSlugs } from "@/lib/navigation-memory";
 import { absoluteUrl, createSeoHead, truncateDescription } from "@/lib/seo";
 import { toCategorySlug } from "@/lib/content-taxonomy";
 import { formatLongUtcDate, formatShortUtcDate, getUtcDateKey } from "@/lib/dates";
+import { useContentEngagement } from "@/hooks/use-content-engagement";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -231,12 +233,24 @@ function UpdateDetailPage() {
   const goToNext = () => {
     if (!activeNextSlug) return;
     setDirection(1);
+    trackEvent("update_adjacent_click", {
+      from_slug: slug,
+      to_slug: activeNextSlug,
+      direction: "next",
+      source_list: list || date || "default"
+    });
     navigate({ to: `/update/${activeNextSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
   };
 
   const goToPrev = () => {
     if (!activePrevSlug) return;
     setDirection(-1);
+    trackEvent("update_adjacent_click", {
+      from_slug: slug,
+      to_slug: activePrevSlug,
+      direction: "previous",
+      source_list: list || date || "default"
+    });
     navigate({ to: `/update/${activePrevSlug}`, search: { ...(list ? { list } : {}), ...(date ? { date } : {}) } });
   };
 
@@ -248,6 +262,13 @@ function UpdateDetailPage() {
   });
 
   const update = query.data;
+
+  useContentEngagement({
+    contentType: "update",
+    slug: update?.slug ?? slug,
+    category: update?.category,
+    enabled: Boolean(update)
+  });
 
   useEffect(() => {
     if (update?.id) {
@@ -291,6 +312,7 @@ function UpdateDetailPage() {
   const contextualLinks = [...relatedUpdates, ...recentUpdates].filter(
     (item: any, index: number, arr: any[]) => arr.findIndex((candidate) => candidate.slug === item.slug) === index
   ).slice(0, 4);
+  const nextRead = contextualLinks[0] ?? null;
   const categorySlug = toCategorySlug(update.category);
   const articleDate = formatLongUtcDate(update.created_at);
   const articleDateParam = getUtcDateKey(update.created_at);
@@ -406,7 +428,15 @@ function UpdateDetailPage() {
                   to="/update/$slug"
                   params={{ slug: activePrevSlug }}
                   search={{ ...(list ? { list } : {}), ...(date ? { date } : {}) }}
-                  onClick={() => setDirection(-1)}
+                  onClick={() => {
+                    setDirection(-1);
+                    trackEvent("update_adjacent_click", {
+                      from_slug: update.slug,
+                      to_slug: activePrevSlug,
+                      direction: "previous",
+                      source_list: list || date || "default"
+                    });
+                  }}
                   className="group relative flex flex-col items-start gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden"
                 >
                   <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
@@ -428,7 +458,15 @@ function UpdateDetailPage() {
                   to="/update/$slug"
                   params={{ slug: activeNextSlug }}
                   search={{ ...(list ? { list } : {}), ...(date ? { date } : {}) }}
-                  onClick={() => setDirection(1)}
+                  onClick={() => {
+                    setDirection(1);
+                    trackEvent("update_adjacent_click", {
+                      from_slug: update.slug,
+                      to_slug: activeNextSlug,
+                      direction: "next",
+                      source_list: list || date || "default"
+                    });
+                  }}
                   className="group relative flex flex-col items-end gap-1 p-4 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md hover:border-primary/50 cursor-pointer transition-all duration-200 overflow-hidden text-right"
                 >
                   <div className="flex items-center text-xs font-medium text-muted-foreground mb-1 group-hover:text-primary transition-colors">
@@ -467,6 +505,28 @@ function UpdateDetailPage() {
                 </section>
               )}
 
+              <section className="rounded-3xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
+                <h2 className="text-xl font-semibold tracking-tight border-b border-primary/10 pb-2 mb-4">
+                  Editorial note
+                </h2>
+                <p className="leading-relaxed text-muted-foreground">
+                  AI Dose summarizes public reporting and links to original sources when they are
+                  available. Review the{" "}
+                  <Link to="/editorial-policy" className="font-medium text-primary hover:underline">
+                    Editorial Policy
+                  </Link>
+                  ,{" "}
+                  <Link to="/disclaimer" className="font-medium text-primary hover:underline">
+                    Disclaimer
+                  </Link>
+                  , or{" "}
+                  <Link to="/contact" className="font-medium text-primary hover:underline">
+                    Contact
+                  </Link>{" "}
+                  page if you need to flag a correction or understand how this site handles sources.
+                </p>
+              </section>
+
               {contextualLinks.length > 0 && (
                 <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                   <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
@@ -475,7 +535,16 @@ function UpdateDetailPage() {
                   <p className="leading-relaxed text-muted-foreground">
                     Explore related coverage about {update.category.toLowerCase()} and adjacent AI developments: {contextualLinks.map((item: any, index: number) => (
                       <span key={item.slug}>
-                        <Link to="/update/$slug" params={{ slug: item.slug }} className="font-medium text-primary hover:underline">
+                        <Link
+                          to="/update/$slug"
+                          params={{ slug: item.slug }}
+                          className="font-medium text-primary hover:underline"
+                          onClick={() => trackEvent("update_inline_related_click", {
+                            from_slug: update.slug,
+                            to_slug: item.slug,
+                            category: item.category
+                          })}
+                        >
                           {item.title}
                         </Link>
                         {index < contextualLinks.length - 1 ? ", " : "."}
@@ -493,7 +562,16 @@ function UpdateDetailPage() {
                   <ul className="not-prose space-y-3">
                     {relatedUpdates.map((item: any) => (
                       <li key={item.slug} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
-                        <Link to="/update/$slug" params={{ slug: item.slug }} className="font-medium text-foreground hover:text-primary hover:underline">
+                        <Link
+                          to="/update/$slug"
+                          params={{ slug: item.slug }}
+                          className="font-medium text-foreground hover:text-primary hover:underline"
+                          onClick={() => trackEvent("update_related_click", {
+                            from_slug: update.slug,
+                            to_slug: item.slug,
+                            category: item.category
+                          })}
+                        >
                           {item.title}
                         </Link>
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -502,6 +580,31 @@ function UpdateDetailPage() {
                       </li>
                     ))}
                   </ul>
+                </section>
+              )}
+
+              {nextRead && (
+                <section className="not-prose rounded-3xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+                    Next read
+                  </p>
+                  <h2 className="mt-3 text-2xl font-heading font-bold tracking-tight">
+                    <Link
+                      to="/update/$slug"
+                      params={{ slug: nextRead.slug }}
+                      className="transition-colors hover:text-primary"
+                      onClick={() => trackEvent("update_next_read_click", {
+                        from_slug: update.slug,
+                        to_slug: nextRead.slug,
+                        category: nextRead.category
+                      })}
+                    >
+                      {nextRead.title}
+                    </Link>
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Stay with the thread by reading one adjacent story before leaving this update.
+                  </p>
                 </section>
               )}
 
@@ -561,7 +664,16 @@ function UpdateDetailPage() {
                     <ul className="space-y-4 text-sm">
                       {recentUpdates.map((item: any) => (
                         <li key={item.slug} className="border-b border-border/30 pb-3 last:border-b-0 last:pb-0">
-                          <Link to="/update/$slug" params={{ slug: item.slug }} className="font-medium text-foreground hover:text-primary hover:underline">
+                          <Link
+                            to="/update/$slug"
+                            params={{ slug: item.slug }}
+                            className="font-medium text-foreground hover:text-primary hover:underline"
+                            onClick={() => trackEvent("update_recent_click", {
+                              from_slug: update.slug,
+                              to_slug: item.slug,
+                              category: item.category
+                            })}
+                          >
                             {item.title}
                           </Link>
                           <p className="mt-1 text-muted-foreground">
