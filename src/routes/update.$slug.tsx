@@ -419,12 +419,6 @@ function UpdateDetailPage() {
                   >
                     Summary
                   </a>
-                  <a
-                    href="#analysis"
-                    className="rounded-full border border-border/60 bg-card/80 px-4 py-2 text-foreground transition-colors hover:border-primary/50 hover:text-primary"
-                  >
-                    Detailed analysis
-                  </a>
                   {update.source_url ? (
                     <a
                       href={update.source_url}
@@ -572,47 +566,36 @@ function UpdateDetailPage() {
                 </p>
               </section>
 
-              <section id="analysis" className="space-y-5">
-                <div className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-                  <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
-                    Detailed analysis
-                  </h2>
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    The detailed section only adds supporting context beyond the summary so the page stays useful without repeating itself.
-                  </p>
-                </div>
-
-                {detailModel.sections.length > 0
-                  ? detailModel.sections.map((section) => (
-                      <section
-                        key={section.id}
-                        id={section.id}
-                        className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none"
-                      >
-                        <h3 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
-                          {section.title}
-                        </h3>
-                        <div className="space-y-4">
-                          {section.paragraphs.map((paragraph) => (
-                            <p key={paragraph} className="text-base leading-8 text-muted-foreground">
-                              {paragraph}
-                            </p>
+              {detailModel.sections.length > 0
+                ? detailModel.sections.map((section) => (
+                    <section
+                      key={section.id}
+                      id={section.id}
+                      className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+                    >
+                      <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
+                        {section.title}
+                      </h2>
+                      <div className="space-y-4">
+                        {section.paragraphs.map((paragraph) => (
+                          <p key={paragraph} className="text-base leading-8 text-muted-foreground">
+                            {paragraph}
+                          </p>
+                        ))}
+                      </div>
+                      {section.bullets.length > 0 ? (
+                        <ul className="mt-5 space-y-3">
+                          {section.bullets.map((bullet) => (
+                            <li key={bullet} className="flex gap-3 text-base leading-7 text-muted-foreground">
+                              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                              <span>{bullet}</span>
+                            </li>
                           ))}
-                        </div>
-                        {section.bullets.length > 0 ? (
-                          <ul className="mt-5 space-y-3">
-                            {section.bullets.map((bullet) => (
-                              <li key={bullet} className="flex gap-3 text-base leading-7 text-muted-foreground">
-                                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                                <span>{bullet}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </section>
-                    ))
-                  : null}
-              </section>
+                        </ul>
+                      ) : null}
+                    </section>
+                  ))
+                : null}
 
               <section className="rounded-3xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
                 <h2 className="text-xl font-semibold tracking-tight border-b border-primary/10 pb-2 mb-4">
