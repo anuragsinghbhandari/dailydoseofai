@@ -11,7 +11,7 @@ export const Route = createFileRoute("/category/$categorySlug")({
     const categoryName = loaderData?.category?.name ?? params.categorySlug;
     return createSeoHead({
       title: `${categoryName} AI News | AI Dose`,
-      description: `Browse the latest ${categoryName} articles and AI updates on AI Dose.`,
+      description: `Browse the latest ${categoryName} AI updates, summaries, and detailed analysis on AI Dose.`,
       pathname: `/category/${params.categorySlug}`
     });
   },
@@ -46,7 +46,7 @@ function CategoryPage() {
         <div className="space-y-2">
           <h1 className="text-4xl font-heading font-bold tracking-tight">{loaderData.category.name}</h1>
           <p className="text-lg text-muted-foreground">
-            {loaderData.category.count} published articles in this category.
+            {loaderData.category.count} published updates with quick summaries and deeper context in this category.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 pt-2">

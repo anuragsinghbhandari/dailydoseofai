@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
     createSeoHead({
       title: "AI Dose | Daily AI News and Analysis",
       description:
-        "Catch up on the most important AI news, product launches, and research in minutes with AI Dose.",
+        "Read daily AI news, fast summaries, and detailed analysis on model launches, research, tools, policy, and business moves.",
       pathname: "/"
     }),
   component: HomePage,
@@ -112,6 +112,7 @@ function HomePage() {
   const [isRestoringFeedState, setIsRestoringFeedState] = useState(false);
   const [weekAnchor, setWeekAnchor] = useState(() => getUtcWeekStart());
   const [monthAnchor, setMonthAnchor] = useState(() => getUtcMonthStart());
+  const featuredUpdate = loaderData.latest[0] ?? null;
 
   const isCurrentWeek = weekAnchor.getTime() === getUtcWeekStart().getTime();
   const isCurrentMonth = monthAnchor.getTime() === getUtcMonthStart().getTime();
@@ -181,11 +182,62 @@ function HomePage() {
               className="space-y-5"
             >
               <h1 className="text-5xl font-heading font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl leading-[1.05] text-balance">
-                The signal in AI, without the noise
+                Daily AI news with summaries and detailed analysis
               </h1>
-              <p className="mx-auto max-w-2xl text-muted-foreground md:text-xl/relaxed lg:text-2xl/relaxed leading-relaxed">
-                A sharper daily read on launches, research, tooling, and market moves that actually matter.
+              <p className="mx-auto max-w-3xl text-muted-foreground md:text-xl/relaxed lg:text-2xl/relaxed leading-relaxed">
+                Track AI model releases, product launches, research papers, policy moves, and business shifts with fast summaries up top and deeper context underneath.
               </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+              className="flex flex-wrap items-center justify-center gap-3 text-sm"
+            >
+              <span className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-foreground shadow-sm">
+                Daily AI news roundup
+              </span>
+              <span className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-foreground shadow-sm">
+                Detailed explainers below every summary
+              </span>
+              <span className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-foreground shadow-sm">
+                Category archives and evergreen guides
+              </span>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.28, ease: "easeOut" }}
+              className="grid w-full max-w-4xl gap-4 md:grid-cols-[minmax(0,1fr)_auto]"
+            >
+              {featuredUpdate ? (
+                <Link
+                  to="/update/$slug"
+                  params={{ slug: featuredUpdate.slug }}
+                  className="rounded-3xl border border-border/60 bg-background/80 p-5 text-left shadow-sm transition-colors hover:border-primary/40"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+                    Latest update
+                  </p>
+                  <h2 className="mt-3 text-2xl font-heading font-bold tracking-tight text-foreground">
+                    {featuredUpdate.title}
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    {featuredUpdate.summary}
+                  </p>
+                </Link>
+              ) : null}
+
+              <div className="flex flex-col gap-3">
+                <Button asChild size="lg" className="rounded-full px-6">
+                  <Link to="/today">Read today's updates</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="rounded-full px-6">
+                  <Link to="/article">Browse detailed articles</Link>
+                </Button>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -259,7 +311,9 @@ function HomePage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-border/40 pb-4">
             <div className="space-y-2">
               <h2 className="text-3xl font-heading font-bold tracking-tight">Today's Updates</h2>
-              <p className="text-muted-foreground text-lg">The most important AI news from today.</p>
+              <p className="text-muted-foreground text-lg">
+                Quick summaries for scanning, followed by deeper analysis on each update page.
+              </p>
             </div>
           </div>
           <UpdateList

@@ -21,6 +21,9 @@ interface UpdateCardProps {
 
 export function UpdateCard({ update, featured, listContext, returnDate }: UpdateCardProps) {
   const isSeen = (update as any).isSeen;
+  const preview = featured
+    ? update.why_it_matters || update.summary
+    : update.summary;
 
   return (
     <Link
@@ -61,15 +64,13 @@ export function UpdateCard({ update, featured, listContext, returnDate }: Update
         </CardHeader>
         <CardContent className="flex-1 flex flex-col justify-between space-y-5">
           <p className={`leading-relaxed text-muted-foreground/90 ${featured ? 'text-lg line-clamp-4' : 'text-[15px] line-clamp-3'}`}>
-            {update.summary}
+            {preview}
           </p>
           <div className="pt-3 border-t border-border/40 flex justify-between items-center">
             <ImpactScore score={update.impact_score} />
-            {featured && (
-              <span className="text-sm font-medium text-primary flex items-center">
-                Read Article &rarr;
-              </span>
-            )}
+            <span className="text-sm font-medium text-primary flex items-center">
+              {featured ? "Read summary + analysis" : "Open update"}
+            </span>
           </div>
         </CardContent>
       </Card>

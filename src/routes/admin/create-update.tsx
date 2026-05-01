@@ -127,7 +127,7 @@ function CreateUpdatePage() {
                 <CardHeader>
                   <CardTitle>Basic Information</CardTitle>
                   <CardDescription>
-                    The core details of the update.
+                    The core details of the update. Keep the summary tight, then use the full details field for crawlable depth.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -174,7 +174,7 @@ function CreateUpdatePage() {
                         <FormControl>
                           <Textarea
                             rows={3}
-                            placeholder="One or two sentence summary of the update."
+                            placeholder="One or two sentence summary of the update for the top of the page and search snippets."
                             {...field}
                           />
                         </FormControl>
@@ -217,7 +217,7 @@ function CreateUpdatePage() {
                         <FormControl>
                           <Textarea
                             rows={4}
-                            placeholder="Explain why this update is important."
+                            placeholder="Explain why this update matters for builders, buyers, researchers, or the broader AI market."
                             {...field}
                           />
                         </FormControl>
@@ -234,11 +234,14 @@ function CreateUpdatePage() {
                         <FormLabel>Full Details</FormLabel>
                         <FormControl>
                           <Textarea
-                            rows={10}
-                            placeholder="Longer-form description or notes."
+                            rows={14}
+                            placeholder={"Write a detailed post below the summary.\n\nRecommended structure:\n## What happened\nExplain the announcement, release, or result in plain English.\n\n## Key details\n- Include metrics, dates, model names, pricing, benchmarks, or product changes.\n- Add bullet points when useful.\n\n## What to watch\nExplain the next implication, risk, or competitive impact."}
                             {...field}
                           />
                         </FormControl>
+                        <FormDescription>
+                          This field powers the detailed analysis section shown below the summary on the public page.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -338,4 +341,3 @@ function CreateUpdatePage() {
     </div>
   );
 }
-

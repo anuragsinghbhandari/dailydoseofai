@@ -27,6 +27,7 @@ import { absoluteUrl, createSeoHead, truncateDescription } from "@/lib/seo";
 import { toCategorySlug } from "@/lib/content-taxonomy";
 import { formatLongUtcDate, formatShortUtcDate, getUtcDateKey } from "@/lib/dates";
 import { useContentEngagement } from "@/hooks/use-content-engagement";
+import { buildUpdateDetailModel } from "@/lib/update-content";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -82,8 +83,12 @@ export const Route = createFileRoute("/update/$slug")({
   head: ({ params, loaderData }) => {
     const update = loaderData?.update;
     const title = update?.title ? `${update.title} | AI Dose` : "AI Update | AI Dose";
+    const detailModel = update
+      ? buildUpdateDetailModel(update)
+      : null;
     const description = truncateDescription(
-      update?.summary || update?.why_it_matters || "Read the latest AI update on AI Dose."
+      [update?.summary, update?.why_it_matters].filter(Boolean).join(" ") ||
+        "Read the latest AI update on AI Dose."
     );
 
     return {
@@ -108,7 +113,15 @@ export const Route = createFileRoute("/update/$slug")({
                 dateModified: new Date(update.created_at).toISOString(),
                 mainEntityOfPage: absoluteUrl(`/update/${params.slug}`),
                 articleSection: update.category,
+                articleBody: detailModel?.sections
+                  .flatMap((section) => [...section.paragraphs, ...section.bullets])
+                  .join("\n\n"),
+                abstract: update.summary,
                 url: absoluteUrl(`/update/${params.slug}`),
+                author: {
+                  "@type": "Organization",
+                  name: "AI Dose"
+                },
                 publisher: {
                   "@type": "Organization",
                   name: "AI Dose",
@@ -316,6 +329,7 @@ function UpdateDetailPage() {
   const categorySlug = toCategorySlug(update.category);
   const articleDate = formatLongUtcDate(update.created_at);
   const articleDateParam = getUtcDateKey(update.created_at);
+  const detailModel = buildUpdateDetailModel(update);
 
   const slideVariants: any = {
     initial: (d: number) => ({ x: d > 0 ? 50 : -50, opacity: 0 }),
@@ -375,6 +389,9 @@ function UpdateDetailPage() {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
               <div className="space-y-4 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary/80">
+                  AI update explained
+                </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <Link to="/category/$categorySlug" params={{ categorySlug }} className="hover:opacity-90">
                     <CategoryBadge category={update.category} />
@@ -390,11 +407,70 @@ function UpdateDetailPage() {
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-extrabold tracking-tight leading-tight">
                   {update.title}
                 </h1>
+                {detailModel.dek ? (
+                  <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
+                    {detailModel.dek}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-3 text-sm">
+                  <a
+                    href="#summary"
+                    className="rounded-full border border-border/60 bg-card/80 px-4 py-2 text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                  >
+                    Summary
+                  </a>
+                  <a
+                    href="#analysis"
+                    className="rounded-full border border-border/60 bg-card/80 px-4 py-2 text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                  >
+                    Detailed analysis
+                  </a>
+                  {update.source_url ? (
+                    <a
+                      href={update.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-primary transition-colors hover:bg-primary/15"
+                    >
+                      Primary source
+                    </a>
+                  ) : null}
+                </div>
               </div>
               <div className="flex-shrink-0 flex items-center gap-4">
                 <ImpactScore score={update.impact_score} />
               </div>
             </div>
+          </div>
+
+          <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+            <section className="rounded-3xl border border-border/50 bg-card/80 p-5 shadow-sm backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+                In 10 seconds
+              </p>
+              <h2 className="mt-3 text-2xl font-heading font-bold tracking-tight">
+                What to know first
+              </h2>
+              <ul className="mt-4 space-y-3">
+                {detailModel.keyTakeaways.map((item) => (
+                  <li key={item} className="flex gap-3 text-sm leading-6 text-muted-foreground">
+                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {detailModel.whyItMatters ? (
+              <section className="rounded-3xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+                  Why it matters
+                </p>
+                <p className="mt-3 text-base leading-7 text-muted-foreground">
+                  {detailModel.whyItMatters}
+                </p>
+              </section>
+            ) : null}
           </div>
 
           <div className="mb-6 flex items-center justify-between rounded-2xl border border-border/50 bg-card/70 px-4 py-3 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur sm:hidden">
@@ -487,7 +563,7 @@ function UpdateDetailPage() {
 
           <div className="grid gap-8 md:gap-12 md:grid-cols-[minmax(0,1fr)_300px]">
             <article className="space-y-6 md:space-y-8 prose prose-neutral dark:prose-invert max-w-none">
-              <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+              <section id="summary" className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                 <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
                   Summary
                 </h2>
@@ -496,14 +572,47 @@ function UpdateDetailPage() {
                 </p>
               </section>
 
-              {update.content && !update.content.startsWith("Source: http") && (
-                <section className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+              <section id="analysis" className="space-y-5">
+                <div className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                   <h2 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
-                    Deep Dive
+                    Detailed analysis
                   </h2>
-                  <div className="whitespace-pre-wrap leading-relaxed">{update.content}</div>
-                </section>
-              )}
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    The detailed section only adds supporting context beyond the summary so the page stays useful without repeating itself.
+                  </p>
+                </div>
+
+                {detailModel.sections.length > 0
+                  ? detailModel.sections.map((section) => (
+                      <section
+                        key={section.id}
+                        id={section.id}
+                        className="rounded-3xl border border-border/50 bg-card/75 p-5 shadow-sm backdrop-blur md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+                      >
+                        <h3 className="text-xl font-semibold tracking-tight border-b pb-2 mb-4">
+                          {section.title}
+                        </h3>
+                        <div className="space-y-4">
+                          {section.paragraphs.map((paragraph) => (
+                            <p key={paragraph} className="text-base leading-8 text-muted-foreground">
+                              {paragraph}
+                            </p>
+                          ))}
+                        </div>
+                        {section.bullets.length > 0 ? (
+                          <ul className="mt-5 space-y-3">
+                            {section.bullets.map((bullet) => (
+                              <li key={bullet} className="flex gap-3 text-base leading-7 text-muted-foreground">
+                                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ))
+                  : null}
+              </section>
 
               <section className="rounded-3xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
                 <h2 className="text-xl font-semibold tracking-tight border-b border-primary/10 pb-2 mb-4">
@@ -638,6 +747,10 @@ function UpdateDetailPage() {
                   <div>
                     <span className="font-semibold block mb-1">Impact</span>
                     <span className="text-muted-foreground">{update.impact_score}/10</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold block mb-1">Format</span>
+                    <span className="text-muted-foreground">Summary plus detailed analysis</span>
                   </div>
                   {update.source_url && (
                     <div>

@@ -98,6 +98,12 @@ const MAX_GITHUB_ITEMS = 3;
 const MAX_HN_ITEMS = 6;
 const MAX_REDDIT_ITEMS = 6;
 const SUMMARIZE_CONCURRENCY = 4;
+const MAX_SOURCE_CONTEXT_CHARS = 12000;
+const MAX_SOURCE_FETCH_CHARS = 20000;
+
+function isPendingReviewValue(value?: string | null) {
+    return !value || value.trim().toLowerCase() === "pending review";
+}
 
 function isFomoNews(title: string, summary: string, loose = false) {
     const content = (title + " " + summary).toLowerCase();
@@ -141,6 +147,63 @@ function extractSummary(item: any) {
 function truncate(str: string, len: number) {
     if (str.length <= len) return str;
     return str.substring(0, len - 3) + "...";
+}
+
+function stripHtml(html: string) {
+    return html
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+        .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;/gi, "'")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function extractLikelyArticleText(html: string) {
+    const articleMatch = html.match(/<article[\s\S]*?<\/article>/i);
+    if (articleMatch) return stripHtml(articleMatch[0]);
+
+    const mainMatch = html.match(/<main[\s\S]*?<\/main>/i);
+    if (mainMatch) return stripHtml(mainMatch[0]);
+
+    const bodyMatch = html.match(/<body[\s\S]*?<\/body>/i);
+    if (bodyMatch) return stripHtml(bodyMatch[0]);
+
+    return stripHtml(html);
+}
+
+async function fetchSourceContext(url: string) {
+    try {
+        const res = await fetch(url, {
+            headers: {
+                "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            }
+        });
+
+        if (!res.ok) {
+            throw new Error(`source fetch failed with status ${res.status}`);
+        }
+
+        const contentType = res.headers.get("content-type") || "";
+
+        if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
+            return null;
+        }
+
+        const html = (await res.text()).slice(0, MAX_SOURCE_FETCH_CHARS);
+        const text = extractLikelyArticleText(html).slice(0, MAX_SOURCE_CONTEXT_CHARS);
+        return text || null;
+    } catch (err) {
+        console.error(`Source context fetch error for ${url}:`, err);
+        return null;
+    }
 }
 
 function generateSlug(title: string) {
@@ -466,14 +529,28 @@ async function summarize(update: any) {
     if (!ai) return update;
 
     try {
+        const sourceContext = update.source_url ? await fetchSourceContext(update.source_url) : null;
         const prompt = `
-Summarize this AI news in 2-3 sentences and rate impact 0-10.
+You are writing a high-signal AI news brief for AI Dose.
+
+Use the source context when it is available. Be concrete, avoid hype, and do not say "pending review".
+If the source context is weak or missing, rely on the title and snippet only and keep claims conservative.
 
 Title: ${update.title}
 Snippet: ${update.summary}
+Existing category: ${update.category}
+Source URL: ${update.source_url || "N/A"}
+
+Source context:
+${sourceContext || "No additional source context available."}
 
 Return JSON:
-{ "summary": "...", "impact_score": number }
+{
+  "summary": "2-3 sentence summary",
+  "why_it_matters": "1-2 sentence practical significance",
+  "content": "Detailed analysis in markdown with optional headings like ## What happened, ## Key details, ## What to watch",
+  "impact_score": number
+}
 `;
 
         const res = await ai.models.generateContent({
@@ -487,6 +564,12 @@ Return JSON:
             const data = JSON.parse(cleaned);
 
             if (data.summary) update.summary = data.summary;
+            if (data.why_it_matters && !isPendingReviewValue(data.why_it_matters)) {
+                update.why_it_matters = data.why_it_matters;
+            }
+            if (data.content && typeof data.content === "string") {
+                update.content = data.content.trim();
+            }
             if (data.impact_score)
                 update.impact_score = Math.min(10, Math.max(0, data.impact_score));
         }

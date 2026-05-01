@@ -132,7 +132,7 @@ function RootLayout() {
                   <div className="space-y-3">
                     <h2 className="text-xl font-heading font-semibold tracking-tight">AI Dose</h2>
                     <p className="max-w-2xl text-sm text-muted-foreground">
-                      Daily AI reporting with direct links to the newest stories, category archives, and feed endpoints so fresh articles are easy for readers and crawlers to discover.
+                      Daily AI reporting with summary-first updates, detailed follow-through, category archives, and feed endpoints so readers and crawlers can understand each story quickly.
                     </p>
                     <div className="flex flex-wrap gap-4 text-sm">
                       <Link to="/" className="text-foreground hover:text-primary hover:underline">

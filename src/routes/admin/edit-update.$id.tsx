@@ -168,7 +168,7 @@ function EditUpdatePage() {
                 <CardHeader>
                   <CardTitle>Basic Information</CardTitle>
                   <CardDescription>
-                    The core details of the update.
+                    The core details of the update. Keep the summary concise, then use the full details field for durable body content.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -207,13 +207,17 @@ function EditUpdatePage() {
                     control={form.control}
                     name="summary"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Summary</FormLabel>
-                        <FormControl>
-                          <Textarea rows={3} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                        <FormItem>
+                          <FormLabel>Summary</FormLabel>
+                          <FormControl>
+                          <Textarea
+                            rows={3}
+                            placeholder="One or two sentence summary for the top of the page and search snippets."
+                            {...field}
+                          />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                     )}
                   />
 
@@ -242,13 +246,17 @@ function EditUpdatePage() {
                     control={form.control}
                     name="why_it_matters"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Why it matters</FormLabel>
-                        <FormControl>
-                          <Textarea rows={4} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                        <FormItem>
+                          <FormLabel>Why it matters</FormLabel>
+                          <FormControl>
+                          <Textarea
+                            rows={4}
+                            placeholder="Explain the practical impact for developers, companies, researchers, or the market."
+                            {...field}
+                          />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                     )}
                   />
 
@@ -259,8 +267,15 @@ function EditUpdatePage() {
                       <FormItem>
                         <FormLabel>Full Details</FormLabel>
                         <FormControl>
-                          <Textarea rows={10} {...field} />
+                          <Textarea
+                            rows={14}
+                            placeholder={"Write a detailed post below the summary.\n\nRecommended structure:\n## What happened\nExplain the announcement, release, or result in plain English.\n\n## Key details\n- Include metrics, dates, model names, pricing, benchmarks, or product changes.\n- Add bullet points when useful.\n\n## What to watch\nExplain the next implication, risk, or competitive impact."}
+                            {...field}
+                          />
                         </FormControl>
+                        <FormDescription>
+                          This field feeds the detailed analysis section rendered beneath the summary on the public page.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -360,4 +375,3 @@ function EditUpdatePage() {
     </div>
   );
 }
-

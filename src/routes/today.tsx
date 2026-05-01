@@ -8,7 +8,7 @@ export const Route = createFileRoute("/today")({
   head: () =>
     createSeoHead({
       title: "Today's AI News | AI Dose",
-      description: "Read today's most important AI updates, launches, and announcements in one place.",
+      description: "Read today's most important AI updates with quick summaries and detailed analysis for launches, research, tools, and policy.",
       pathname: "/today"
     }),
   component: TodayPage,
@@ -33,6 +33,9 @@ function TodayPage() {
       <h1 className="text-2xl font-bold">
         Today's top AI updates
       </h1>
+      <p className="max-w-3xl text-muted-foreground">
+        Start with the short summary on each card, then open any update for deeper context, source links, and structured analysis.
+      </p>
       <UpdateList
         updates={query.data ?? []}
         isLoading={query.isLoading}
