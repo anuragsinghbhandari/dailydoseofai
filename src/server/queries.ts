@@ -67,6 +67,180 @@ async function getSession() {
   }
 }
 
+const DISPLAY_DEDUPE_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "amid",
+  "being",
+  "from",
+  "have",
+  "latest",
+  "more",
+  "new",
+  "news",
+  "over",
+  "said",
+  "says",
+  "that",
+  "their",
+  "this",
+  "update",
+  "with",
+  "will"
+]);
+
+const DISPLAY_PUBLISHER_SUFFIX_HINTS = [
+  "ars technica",
+  "business insider",
+  "google blog",
+  "hacker news",
+  "hugging face",
+  "mit technology review",
+  "techcrunch",
+  "the verge",
+  "venturebeat",
+  "wired",
+  "zdnet"
+];
+
+const DISPLAY_ENTITY_TERMS = [
+  "anthropic",
+  "claude",
+  "deepmind",
+  "gemini",
+  "google",
+  "gpt",
+  "huggingface",
+  "llama",
+  "meta",
+  "microsoft",
+  "mistral",
+  "nvidia",
+  "openai",
+  "qwen",
+  "sora",
+  "xai"
+];
+
+function stripPublisherSuffix(title: string) {
+  const parts = title.split(/\s[-–—]\s/);
+  if (parts.length < 2) return title;
+
+  const suffix = parts[parts.length - 1].trim().toLowerCase();
+  const isPublisher =
+    suffix.split(/\s+/).length <= 5 &&
+    DISPLAY_PUBLISHER_SUFFIX_HINTS.some((hint) => suffix.includes(hint));
+
+  return isPublisher ? parts.slice(0, -1).join(" - ") : title;
+}
+
+function normalizeDisplayTitle(title: string) {
+  return stripPublisherSuffix(title)
+    .toLowerCase()
+    .replace(/^(\[[^\]]+\]\s*)+/, "")
+    .replace(/\bgpt[\s-]?(\d[\w.]*)\b/g, "gpt$1")
+    .replace(/\bclaude[\s-]?(\d[\w.]*)\b/g, "claude$1")
+    .replace(/\bllama[\s-]?(\d[\w.]*)\b/g, "llama$1")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeDisplayUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+    const searchParams = new URLSearchParams(parsed.search);
+
+    for (const key of [...searchParams.keys()]) {
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey.startsWith("utm_") ||
+        ["fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src"].includes(lowerKey)
+      ) {
+        searchParams.delete(key);
+      }
+    }
+
+    const path = parsed.pathname.replace(/\/$/, "");
+    const query = searchParams.toString();
+    return `${host}${path}${query ? `?${query}` : ""}`;
+  } catch {
+    return url.trim().toLowerCase();
+  }
+}
+
+function displayTitleTokens(title: string) {
+  return new Set(
+    normalizeDisplayTitle(title)
+      .split(/\s+/)
+      .map((token) =>
+        token
+          .replace(/ies$/, "y")
+          .replace(/sses$/, "ss")
+          .replace(/s$/, "")
+      )
+      .filter((token) => token.length >= 3 && !DISPLAY_DEDUPE_STOP_WORDS.has(token))
+  );
+}
+
+function setIntersectionSize(a: Set<string>, b: Set<string>) {
+  let count = 0;
+  for (const value of a) {
+    if (b.has(value)) count += 1;
+  }
+  return count;
+}
+
+function hasSharedDisplayEntity(a: Set<string>, b: Set<string>) {
+  return DISPLAY_ENTITY_TERMS.some((entity) => a.has(entity) && b.has(entity));
+}
+
+function isDuplicateDisplayUpdate(a: Update, b: Update) {
+  const aUrl = normalizeDisplayUrl(a.source_url);
+  const bUrl = normalizeDisplayUrl(b.source_url);
+  if (aUrl && aUrl === bUrl) return true;
+
+  const aTitle = normalizeDisplayTitle(a.title);
+  const bTitle = normalizeDisplayTitle(b.title);
+  if (aTitle && aTitle === bTitle) return true;
+
+  if (
+    aTitle.length >= 30 &&
+    bTitle.length >= 30 &&
+    (aTitle.includes(bTitle) || bTitle.includes(aTitle))
+  ) {
+    return true;
+  }
+
+  const aTokens = displayTitleTokens(a.title);
+  const bTokens = displayTitleTokens(b.title);
+  const smallerTokenCount = Math.min(aTokens.size, bTokens.size);
+  if (smallerTokenCount < 3) return false;
+
+  const overlap = setIntersectionSize(aTokens, bTokens);
+  const coverage = overlap / smallerTokenCount;
+
+  return (
+    (overlap >= 5 && coverage >= 0.58) ||
+    (hasSharedDisplayEntity(aTokens, bTokens) && overlap >= 4 && coverage >= 0.5)
+  );
+}
+
+function dedupeDisplayUpdates<T extends Update>(items: T[]) {
+  const unique: T[] = [];
+
+  for (const item of items) {
+    if (unique.some((existingUpdate) => isDuplicateDisplayUpdate(item, existingUpdate))) {
+      continue;
+    }
+
+    unique.push(item);
+  }
+
+  return unique;
+}
+
 async function getUpdatesWithSeenState(
   whereClause: any,
   options: {
@@ -90,15 +264,21 @@ async function getUpdatesWithSeenState(
     .orderBy(...(options.orderByClauses ?? [desc(updates.created_at)]));
 
   if (typeof options.limit === "number") {
-    queryBuilder = queryBuilder.limit(options.limit);
+    queryBuilder = queryBuilder.limit(Math.min(options.limit * 3, 600));
   }
 
   const rows = await queryBuilder;
 
-  return rows.map((row: any) => ({
+  const mappedRows = rows.map((row: any) => ({
     ...row.update,
     isSeen: row.isSeen ?? false
-  })) as Update[];
+  })) as Array<Update & { isSeen?: boolean }>;
+
+  const dedupedRows = dedupeDisplayUpdates(mappedRows);
+
+  return (typeof options.limit === "number"
+    ? dedupedRows.slice(0, options.limit)
+    : dedupedRows) as Update[];
 }
 
 async function getTopUpdatesBetween(from: Date, to: Date): Promise<Update[]> {

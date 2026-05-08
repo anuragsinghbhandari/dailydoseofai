@@ -1,5 +1,5 @@
 import RSSParser from "rss-parser";
-import { updates } from "../schema";
+import { updates, type NewUpdate } from "../schema";
 import crypto from "crypto";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -100,6 +100,102 @@ const MAX_REDDIT_ITEMS = 6;
 const SUMMARIZE_CONCURRENCY = 4;
 const MAX_SOURCE_CONTEXT_CHARS = 12000;
 const MAX_SOURCE_FETCH_CHARS = 20000;
+const SOURCE_DATE_GRACE_HOURS = 12;
+const MAX_FUTURE_SKEW_MS = 2 * 60 * 60 * 1000;
+const EXISTING_DEDUPE_LOOKBACK = 5000;
+
+type CandidateUpdate = NewUpdate & {
+    _feedPublishedAt?: Date;
+    _sourcePublishedAt?: Date | null;
+    _maxAgeHours?: number;
+    _skipReason?: string;
+};
+
+type SourceContext = {
+    text: string | null;
+    finalUrl: string;
+    canonicalUrl: string | null;
+    publishedAt: Date | null;
+};
+
+type ExistingUpdateFingerprint = {
+    title: string;
+    source_url: string;
+};
+
+type NewsFingerprint = {
+    normalizedTitle: string;
+    urlKey: string;
+    tokens: Set<string>;
+    entityTokens: Set<string>;
+};
+
+const TITLE_STOP_WORDS = new Set([
+    "about",
+    "after",
+    "against",
+    "also",
+    "amid",
+    "among",
+    "around",
+    "based",
+    "been",
+    "being",
+    "blog",
+    "could",
+    "from",
+    "have",
+    "into",
+    "latest",
+    "more",
+    "new",
+    "news",
+    "over",
+    "said",
+    "says",
+    "that",
+    "their",
+    "them",
+    "then",
+    "these",
+    "they",
+    "this",
+    "through",
+    "under",
+    "update",
+    "using",
+    "with",
+    "will",
+    "your"
+]);
+
+const PUBLISHER_SUFFIX_HINTS = [
+    "ars technica",
+    "business insider",
+    "google blog",
+    "hacker news",
+    "hugging face",
+    "mit technology review",
+    "techcrunch",
+    "the decoder",
+    "the verge",
+    "venturebeat",
+    "wired",
+    "zdnet"
+];
+
+const ENTITY_TERMS = [
+    ...GIANTS,
+    "huggingface",
+    "hugging face",
+    "mistral",
+    "qwen",
+    "gpt",
+    "claude",
+    "gemini",
+    "llama",
+    "sora"
+];
 
 function isPendingReviewValue(value?: string | null) {
     return !value || value.trim().toLowerCase() === "pending review";
@@ -124,13 +220,27 @@ function isLowSignalNews(title: string, summary: string) {
     return LOW_SIGNAL.some(term => content.includes(term));
 }
 
-function isRecent(date?: string, maxHours = 24) {
-    if (!date) return false;
+function parseDate(value?: string | Date | null) {
+    if (!value) return null;
 
-    const parsed = new Date(date).getTime();
-    if (isNaN(parsed)) return false;
+    const parsed = value instanceof Date ? value : new Date(value);
+    const timestamp = parsed.getTime();
 
-    return Date.now() - parsed <= maxHours * 60 * 60 * 1000;
+    if (Number.isNaN(timestamp)) return null;
+
+    return parsed;
+}
+
+function isWithinAge(date: Date, maxHours: number) {
+    const age = Date.now() - date.getTime();
+    return age >= -MAX_FUTURE_SKEW_MS && age <= maxHours * 60 * 60 * 1000;
+}
+
+function getRecentDate(date?: string | Date | null, maxHours = 24) {
+    const parsed = parseDate(date);
+    if (!parsed) return null;
+
+    return isWithinAge(parsed, maxHours) ? parsed : null;
 }
 
 function extractSummary(item: any) {
@@ -149,19 +259,130 @@ function truncate(str: string, len: number) {
     return str.substring(0, len - 3) + "...";
 }
 
+function decodeHtmlEntities(value: string) {
+    return value
+        .replace(/&amp;/gi, "&")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;/gi, "'")
+        .replace(/&apos;/gi, "'")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">");
+}
+
 function stripHtml(html: string) {
-    return html
+    return decodeHtmlEntities(html)
         .replace(/<script[\s\S]*?<\/script>/gi, " ")
         .replace(/<style[\s\S]*?<\/style>/gi, " ")
         .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
         .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
         .replace(/<[^>]+>/g, " ")
         .replace(/&nbsp;/gi, " ")
-        .replace(/&amp;/gi, "&")
-        .replace(/&quot;/gi, "\"")
-        .replace(/&#39;/gi, "'")
         .replace(/\s+/g, " ")
         .trim();
+}
+
+function getHtmlAttr(tag: string, attr: string) {
+    const match = tag.match(new RegExp(`${attr}\\s*=\\s*["']([^"']+)["']`, "i"));
+    return match ? decodeHtmlEntities(match[1]) : null;
+}
+
+function extractCanonicalUrl(html: string, baseUrl: string) {
+    const linkTags = html.match(/<link\b[^>]*>/gi) || [];
+
+    for (const tag of linkTags) {
+        const rel = getHtmlAttr(tag, "rel")?.toLowerCase();
+        const href = getHtmlAttr(tag, "href");
+
+        if (!rel || !href || !rel.split(/\s+/).includes("canonical")) continue;
+
+        try {
+            return new URL(href, baseUrl).toString();
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
+}
+
+function extractPublishedDateFromHtml(html: string) {
+    const dateFieldNames = new Set([
+        "article:published_time",
+        "date",
+        "datepublished",
+        "dc.date",
+        "dc.date.issued",
+        "og:published_time",
+        "pubdate",
+        "publishdate",
+        "timestamp"
+    ]);
+
+    const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
+
+    for (const tag of metaTags) {
+        const fieldName =
+            getHtmlAttr(tag, "property") ||
+            getHtmlAttr(tag, "name") ||
+            getHtmlAttr(tag, "itemprop");
+        const content = getHtmlAttr(tag, "content");
+
+        if (!fieldName || !content) continue;
+
+        const normalizedFieldName = fieldName.trim().toLowerCase();
+        if (!dateFieldNames.has(normalizedFieldName)) continue;
+
+        const parsed = parseDate(content);
+        if (parsed) return parsed;
+    }
+
+    const timeTags = html.match(/<time\b[^>]*>/gi) || [];
+
+    for (const tag of timeTags) {
+        const datetime = getHtmlAttr(tag, "datetime");
+        const parsed = parseDate(datetime);
+        if (parsed) return parsed;
+    }
+
+    const jsonLdDates = [
+        ...html.matchAll(/"datePublished"\s*:\s*"([^"]+)"/gi)
+    ];
+
+    for (const match of jsonLdDates) {
+        const parsed = parseDate(match[1]);
+        if (parsed) return parsed;
+    }
+
+    return null;
+}
+
+function extractPublishedDateFromUrl(url: string) {
+    try {
+        const parsed = new URL(url);
+        const match = parsed.pathname.match(
+            /(?:^|\/)(20\d{2})[\/-](0?[1-9]|1[0-2])(?:[\/-](0?[1-9]|[12]\d|3[01]))?(?:\/|$)/
+        );
+
+        if (!match) return null;
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = match[3] ? Number(match[3]) : 1;
+        const date = new Date(Date.UTC(year, month - 1, day));
+
+        return Number.isNaN(date.getTime()) ? null : date;
+    } catch {
+        return null;
+    }
+}
+
+function isGoogleNewsUrl(url: string) {
+    try {
+        const host = new URL(url).hostname.replace(/^www\./, "");
+        return host === "news.google.com";
+    } catch {
+        return false;
+    }
 }
 
 function extractLikelyArticleText(html: string) {
@@ -192,14 +413,28 @@ async function fetchSourceContext(url: string) {
         }
 
         const contentType = res.headers.get("content-type") || "";
+        const finalUrl = res.url || url;
 
         if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
-            return null;
+            return {
+                text: null,
+                finalUrl,
+                canonicalUrl: null,
+                publishedAt: null
+            } satisfies SourceContext;
         }
 
         const html = (await res.text()).slice(0, MAX_SOURCE_FETCH_CHARS);
         const text = extractLikelyArticleText(html).slice(0, MAX_SOURCE_CONTEXT_CHARS);
-        return text || null;
+        const canonicalUrl = extractCanonicalUrl(html, finalUrl);
+        const publishedAt = extractPublishedDateFromHtml(html);
+
+        return {
+            text: text || null,
+            finalUrl,
+            canonicalUrl,
+            publishedAt
+        } satisfies SourceContext;
     } catch (err) {
         console.error(`Source context fetch error for ${url}:`, err);
         return null;
@@ -218,13 +453,189 @@ function generateSlug(title: string) {
     return `${base}-${hash}`;
 }
 
+function stripPublisherSuffix(title: string) {
+    const parts = title.split(/\s[-–—]\s/);
+    if (parts.length < 2) return title;
+
+    const suffix = parts[parts.length - 1].trim().toLowerCase();
+    const suffixLooksLikePublisher =
+        suffix.split(/\s+/).length <= 5 &&
+        PUBLISHER_SUFFIX_HINTS.some(hint => suffix.includes(hint));
+
+    return suffixLooksLikePublisher ? parts.slice(0, -1).join(" - ") : title;
+}
+
 function normalizeTitle(title: string) {
-    return title
+    return stripPublisherSuffix(title)
         .toLowerCase()
-        .replace(/^\[[^\]]+\]\s*/, "")
+        .replace(/^(\[[^\]]+\]\s*)+/, "")
+        .replace(/\bgpt[\s-]?(\d[\w.]*)\b/g, "gpt$1")
+        .replace(/\bclaude[\s-]?(\d[\w.]*)\b/g, "claude$1")
+        .replace(/\bllama[\s-]?(\d[\w.]*)\b/g, "llama$1")
         .replace(/[^\w\s]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
+}
+
+function normalizeSourceUrl(url: string) {
+    try {
+        const parsed = new URL(url);
+        const host = parsed.hostname
+            .toLowerCase()
+            .replace(/^www\./, "")
+            .replace(/^m\./, "");
+
+        const searchParams = new URLSearchParams(parsed.search);
+        for (const key of [...searchParams.keys()]) {
+            const lowerKey = key.toLowerCase();
+            if (
+                lowerKey.startsWith("utm_") ||
+                ["fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src"].includes(lowerKey)
+            ) {
+                searchParams.delete(key);
+            }
+        }
+
+        const path = parsed.pathname.replace(/\/$/, "");
+        const query = searchParams.toString();
+
+        return `${host}${path}${query ? `?${query}` : ""}`;
+    } catch {
+        return url.trim().toLowerCase();
+    }
+}
+
+function canonicalToken(token: string) {
+    return token
+        .replace(/ies$/, "y")
+        .replace(/sses$/, "ss")
+        .replace(/s$/, "");
+}
+
+function tokenizeTitle(title: string) {
+    return normalizeTitle(title)
+        .split(/\s+/)
+        .map(canonicalToken)
+        .filter(token => token.length >= 3 && !TITLE_STOP_WORDS.has(token));
+}
+
+function buildFingerprint(title: string, sourceUrl: string): NewsFingerprint {
+    const tokens = new Set(tokenizeTitle(title));
+    const entityTokens = new Set(
+        [...tokens].filter(token =>
+            ENTITY_TERMS.some(entity => token === entity.replace(/\s+/g, "") || token.includes(entity.replace(/\s+/g, "")))
+        )
+    );
+
+    return {
+        normalizedTitle: normalizeTitle(title),
+        urlKey: normalizeSourceUrl(sourceUrl),
+        tokens,
+        entityTokens
+    };
+}
+
+function intersectionSize(a: Set<string>, b: Set<string>) {
+    let count = 0;
+
+    for (const value of a) {
+        if (b.has(value)) count += 1;
+    }
+
+    return count;
+}
+
+function isLikelySameStory(a: NewsFingerprint, b: NewsFingerprint) {
+    if (a.urlKey && a.urlKey === b.urlKey) return true;
+    if (a.normalizedTitle && a.normalizedTitle === b.normalizedTitle) return true;
+
+    if (
+        a.normalizedTitle.length >= 30 &&
+        b.normalizedTitle.length >= 30 &&
+        (a.normalizedTitle.includes(b.normalizedTitle) ||
+            b.normalizedTitle.includes(a.normalizedTitle))
+    ) {
+        return true;
+    }
+
+    const smallerTokenCount = Math.min(a.tokens.size, b.tokens.size);
+    if (smallerTokenCount < 3) return false;
+
+    const overlap = intersectionSize(a.tokens, b.tokens);
+    const coverage = overlap / smallerTokenCount;
+    const entityOverlap = intersectionSize(a.entityTokens, b.entityTokens);
+
+    return (
+        (overlap >= 5 && coverage >= 0.58) ||
+        (entityOverlap > 0 && overlap >= 4 && coverage >= 0.5) ||
+        (entityOverlap >= 2 && overlap >= 3)
+    );
+}
+
+function dedupeCandidates(
+    candidates: CandidateUpdate[],
+    existing: ExistingUpdateFingerprint[],
+    stage: string
+) {
+    const existingFingerprints = existing.map(item =>
+        buildFingerprint(item.title, item.source_url)
+    );
+    const seenFingerprints: NewsFingerprint[] = [];
+    const unique: CandidateUpdate[] = [];
+    let duplicateCount = 0;
+
+    for (const candidate of candidates) {
+        const fingerprint = buildFingerprint(candidate.title, candidate.source_url);
+        const duplicatesExisting = existingFingerprints.some(existingFingerprint =>
+            isLikelySameStory(fingerprint, existingFingerprint)
+        );
+        const duplicatesCurrentBatch = seenFingerprints.some(seenFingerprint =>
+            isLikelySameStory(fingerprint, seenFingerprint)
+        );
+
+        if (duplicatesExisting || duplicatesCurrentBatch) {
+            duplicateCount += 1;
+            continue;
+        }
+
+        seenFingerprints.push(fingerprint);
+        unique.push(candidate);
+    }
+
+    console.log(`${stage} dedupe removed ${duplicateCount} duplicate items.`);
+    return unique;
+}
+
+function isFreshCandidate(update: CandidateUpdate) {
+    if (update._skipReason) return false;
+
+    const maxAgeHours = (update._maxAgeHours ?? 24) + SOURCE_DATE_GRACE_HOURS;
+    const sourcePublishedAt = update._sourcePublishedAt;
+
+    if (sourcePublishedAt && !isWithinAge(sourcePublishedAt, maxAgeHours)) {
+        update._skipReason = `source date ${sourcePublishedAt.toISOString()} is outside ${maxAgeHours}h freshness window`;
+        return false;
+    }
+
+    const feedPublishedAt = update._feedPublishedAt || parseDate(update.created_at);
+    if (feedPublishedAt && !isWithinAge(feedPublishedAt, maxAgeHours)) {
+        update._skipReason = `feed date ${feedPublishedAt.toISOString()} is outside ${maxAgeHours}h freshness window`;
+        return false;
+    }
+
+    return true;
+}
+
+function toInsertableUpdate(update: CandidateUpdate): NewUpdate {
+    const {
+        _feedPublishedAt,
+        _sourcePublishedAt,
+        _maxAgeHours,
+        _skipReason,
+        ...insertable
+    } = update;
+
+    return insertable;
 }
 
 function buildUpdate(item: {
@@ -232,8 +643,10 @@ function buildUpdate(item: {
     summary: string;
     link: string;
     category: string;
+    publishedAt: Date;
+    maxAgeHours: number;
     titlePrefix?: string;
-}) {
+}): CandidateUpdate {
     const normalizedTitle = item.titlePrefix
         ? `${item.titlePrefix}${item.title}`
         : item.title;
@@ -247,7 +660,10 @@ function buildUpdate(item: {
         category: item.category,
         source_url: item.link,
         impact_score: 0,
-        published: true
+        published: true,
+        created_at: item.publishedAt,
+        _feedPublishedAt: item.publishedAt,
+        _maxAgeHours: item.maxAgeHours
     };
 }
 
@@ -268,7 +684,8 @@ async function fetchGoogleNewsSearch(config: {
 
         for (const item of feed.items) {
             if (!item.title || !item.link) continue;
-            if (!isRecent(item.isoDate || item.pubDate, config.maxHours)) continue;
+            const publishedAt = getRecentDate(item.isoDate || item.pubDate, config.maxHours);
+            if (!publishedAt) continue;
 
             const summary = extractSummary(item);
             if (isLowSignalNews(item.title, summary)) continue;
@@ -278,7 +695,9 @@ async function fetchGoogleNewsSearch(config: {
                     title: item.title,
                     summary,
                     link: item.link,
-                    category: config.category
+                    category: config.category,
+                    publishedAt,
+                    maxAgeHours: config.maxHours
                 }));
             }
         }
@@ -312,7 +731,8 @@ async function fetchTechCrunch() {
 
         for (const item of feed.items) {
             if (!item.title || !item.link) continue;
-            if (!isRecent(item.isoDate || item.pubDate)) continue;
+            const publishedAt = getRecentDate(item.isoDate || item.pubDate);
+            if (!publishedAt) continue;
 
             const summary = extractSummary(item);
             if (isLowSignalNews(item.title, summary)) continue;
@@ -322,7 +742,9 @@ async function fetchTechCrunch() {
                     title: item.title,
                     summary,
                     link: item.link,
-                    category: "Startup Launch"
+                    category: "Startup Launch",
+                    publishedAt,
+                    maxAgeHours: 24
                 }));
             }
         }
@@ -347,7 +769,8 @@ async function fetchArxiv() {
 
         for (const item of feed.items) {
             if (!item.title || !item.link) continue;
-            if (!isRecent(item.isoDate || item.pubDate, 96)) continue;
+            const publishedAt = getRecentDate(item.isoDate || item.pubDate, 96);
+            if (!publishedAt) continue;
 
             const summary = extractSummary(item);
             if (isLowSignalNews(item.title, summary)) continue;
@@ -358,6 +781,8 @@ async function fetchArxiv() {
                     summary,
                     link: item.link,
                     category: "Research Paper",
+                    publishedAt,
+                    maxAgeHours: 96,
                     titlePrefix: "[Paper] "
                 }));
             }
@@ -389,6 +814,8 @@ async function fetchGitHub() {
 
         for (const repo of data.items || []) {
             if (repo.stargazers_count < 5) continue;
+            const publishedAt = getRecentDate(repo.created_at, 7 * 24);
+            if (!publishedAt) continue;
 
             items.push({
                 title: `[Repo] ${repo.full_name}`,
@@ -399,7 +826,10 @@ async function fetchGitHub() {
                 category: "GitHub Release",
                 source_url: repo.html_url,
                 impact_score: 0,
-                published: true
+                published: true,
+                created_at: publishedAt,
+                _feedPublishedAt: publishedAt,
+                _maxAgeHours: 7 * 24
             });
         }
     } catch (err) {
@@ -427,6 +857,8 @@ async function fetchHackerNews() {
 
         for (const item of data.hits || []) {
             if (!item.title) continue;
+            const publishedAt = getRecentDate(item.created_at, 48);
+            if (!publishedAt) continue;
             const link = item.url || `https://news.ycombinator.com/item?id=${item.objectID}`;
 
             const summary = extractSummary({ summary: item.story_text || "" });
@@ -441,7 +873,10 @@ async function fetchHackerNews() {
                     category: "Community News",
                     source_url: link,
                     impact_score: 0,
-                    published: true
+                    published: true,
+                    created_at: publishedAt,
+                    _feedPublishedAt: publishedAt,
+                    _maxAgeHours: 48
                 });
             }
         }
@@ -492,7 +927,8 @@ async function fetchReddit() {
 
                 const date = item.isoDate || item.pubDate;
 
-                if (!isRecent(date)) continue;
+                const publishedAt = getRecentDate(date);
+                if (!publishedAt) continue;
 
                 const summary = extractSummary(item);
 
@@ -510,7 +946,10 @@ async function fetchReddit() {
                         category: "Community News",
                         source_url: item.link,
                         impact_score: 0,
-                        published: true
+                        published: true,
+                        created_at: publishedAt,
+                        _feedPublishedAt: publishedAt,
+                        _maxAgeHours: 24
                     });
                 }
             }
@@ -525,11 +964,25 @@ async function fetchReddit() {
     return finalItems;
 }
 
-async function summarize(update: any) {
-    if (!ai) return update;
-
+async function summarize(update: CandidateUpdate) {
     try {
         const sourceContext = update.source_url ? await fetchSourceContext(update.source_url) : null;
+        if (sourceContext?.canonicalUrl) {
+            update.source_url = sourceContext.canonicalUrl;
+        } else if (sourceContext?.finalUrl && !isGoogleNewsUrl(sourceContext.finalUrl)) {
+            update.source_url = sourceContext.finalUrl;
+        }
+
+        update._sourcePublishedAt =
+            sourceContext?.publishedAt ??
+            (update.source_url ? extractPublishedDateFromUrl(update.source_url) : null);
+
+        if (!isFreshCandidate(update)) {
+            return update;
+        }
+
+        if (!ai) return update;
+
         const prompt = `
 You are writing a high-signal AI news brief for AI Dose.
 
@@ -542,7 +995,7 @@ Existing category: ${update.category}
 Source URL: ${update.source_url || "N/A"}
 
 Source context:
-${sourceContext || "No additional source context available."}
+${sourceContext?.text || "No additional source context available."}
 
 Return JSON:
 {
@@ -580,7 +1033,7 @@ Return JSON:
     return update;
 }
 
-async function summarizeInBatches(items: any[]) {
+async function summarizeInBatches(items: CandidateUpdate[]) {
     for (let i = 0; i < items.length; i += SUMMARIZE_CONCURRENCY) {
         const batch = items.slice(i, i + SUMMARIZE_CONCURRENCY);
 
@@ -634,22 +1087,9 @@ async function fetchNews() {
             source_url: updates.source_url
         })
         .from(updates)
-        .limit(2000);
+        .limit(EXISTING_DEDUPE_LOOKBACK);
 
-    const titles = new Set(existing.map(e => normalizeTitle(e.title)));
-    const urls = new Set(existing.map(e => e.source_url));
-    const seenTitles = new Set<string>();
-    const seenUrls = new Set<string>();
-
-    const unique = collected.filter(u => {
-        const normalizedTitle = normalizeTitle(u.title);
-        if (titles.has(normalizedTitle) || urls.has(u.source_url)) return false;
-        if (seenTitles.has(normalizedTitle) || seenUrls.has(u.source_url)) return false;
-
-        seenTitles.add(normalizedTitle);
-        seenUrls.add(u.source_url);
-        return true;
-    });
+    const unique = dedupeCandidates(collected, existing, "Pre-enrichment");
 
     if (!unique.length) {
         console.log(
@@ -664,9 +1104,25 @@ async function fetchNews() {
 
     await summarizeInBatches(unique);
 
+    const fresh = unique.filter(item => {
+        if (isFreshCandidate(item)) return true;
+
+        console.log(`Skipping stale item: ${item.title} (${item._skipReason})`);
+        return false;
+    });
+
+    const finalUnique = dedupeCandidates(fresh, existing, "Post-enrichment");
+
+    if (!finalUnique.length) {
+        console.log(
+            "No new fresh unique articles found after source date checks and final dedupe."
+        );
+        return;
+    }
+
     const inserted = await db
         .insert(updates)
-        .values(unique)
+        .values(finalUnique.map(toInsertableUpdate))
         .onConflictDoNothing({ target: updates.slug })
         .returning();
 
