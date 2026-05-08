@@ -5,49 +5,31 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { auth } from "./auth";
 import { toCategorySlug } from "@/lib/content-taxonomy";
-
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfCurrentWeek() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfWeek(date: Date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfCurrentMonth() {
-  const d = new Date();
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfMonth(date: Date) {
-  const d = new Date(date);
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { getCurrentUtcDate, getUtcMonthStart, getUtcWeekStart, parseUtcDateKey } from "@/lib/dates";
 
 function parseAnchorDate(value: unknown) {
   if (typeof value !== "string" || !value) return null;
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return parseUtcDateKey(value);
+}
+
+function endOfUtcDay(date: Date) {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    23,
+    59,
+    59,
+    999
+  ));
+}
+
+function startOfUtcDay(date: Date) {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate()
+  ));
 }
 
 function clampLimit(value: unknown, fallback: number, max = 50) {
@@ -320,7 +302,7 @@ async function getPublishedCategoriesInternal() {
 
 export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async () => {
   try {
-    const start = startOfToday();
+    const start = getCurrentUtcDate();
     const end = new Date();
     return await getTopUpdatesBetween(start, end);
   } catch (error: any) {
@@ -332,10 +314,10 @@ export const getTodayUpdates = createServerFn({ method: "GET" }).handler(async (
 export const getWeekUpdates = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
     const anchor = parseAnchorDate(ctx.data);
-    const start = anchor ? startOfWeek(anchor) : startOfCurrentWeek();
+    const start = getUtcWeekStart(anchor ?? undefined);
     const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
+    end.setUTCDate(start.getUTCDate() + 6);
+    end.setUTCHours(23, 59, 59, 999);
     return await getTopUpdatesBetween(start, end);
   } catch (error: any) {
     console.error("❌ getWeekUpdates failed:", error);
@@ -346,8 +328,8 @@ export const getWeekUpdates = createServerFn({ method: "GET" }).handler(async (c
 export const getMonthUpdates = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
     const anchor = parseAnchorDate(ctx.data);
-    const start = anchor ? startOfMonth(anchor) : startOfCurrentMonth();
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
+    const start = getUtcMonthStart(anchor ?? undefined);
+    const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0, 23, 59, 59, 999));
     return await getTopUpdatesBetween(start, end);
   } catch (error: any) {
     console.error("❌ getMonthUpdates failed:", error);
@@ -376,10 +358,10 @@ async function getUpdatesSummaryBetween(from: Date, to: Date) {
 export const getWeekUpdatesSummary = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
     const anchor = parseAnchorDate(ctx.data);
-    const start = anchor ? startOfWeek(anchor) : startOfCurrentWeek();
+    const start = getUtcWeekStart(anchor ?? undefined);
     const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
+    end.setUTCDate(start.getUTCDate() + 6);
+    end.setUTCHours(23, 59, 59, 999);
     return await getUpdatesSummaryBetween(start, end);
   } catch (error: any) {
     console.error("❌ getWeekUpdatesSummary failed:", error);
@@ -390,8 +372,8 @@ export const getWeekUpdatesSummary = createServerFn({ method: "GET" }).handler(a
 export const getMonthUpdatesSummary = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   try {
     const anchor = parseAnchorDate(ctx.data);
-    const start = anchor ? startOfMonth(anchor) : startOfCurrentMonth();
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
+    const start = getUtcMonthStart(anchor ?? undefined);
+    const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0, 23, 59, 59, 999));
     return await getUpdatesSummaryBetween(start, end);
   } catch (error: any) {
     console.error("❌ getMonthUpdatesSummary failed:", error);
@@ -488,13 +470,13 @@ export const getUpdateBySlug = createServerFn({ method: "GET" }).handler(async (
 
 export const getUpdatesByDate = createServerFn({ method: "GET" }).handler(async (ctx: any) => {
   const dateStr = ctx.data as string;
-  const start = new Date(`${dateStr}T00:00:00`);
-  const end = new Date(`${dateStr}T23:59:59.999`);
+  const start = parseUtcDateKey(dateStr);
 
-  if (Number.isNaN(start.getTime())) {
+  if (!start) {
     return [];
   }
 
+  const end = endOfUtcDay(start);
   return getTopUpdatesBetween(start, end);
 });
 
@@ -552,11 +534,8 @@ export const getAdjacentUpdates = createServerFn({ method: "GET" }).handler(asyn
   }
 
   const currentUpdate = currentRows[0];
-  const dayStart = new Date(currentUpdate.created_at);
-  dayStart.setHours(0, 0, 0, 0);
-
-  const dayEnd = new Date(dayStart);
-  dayEnd.setHours(23, 59, 59, 999);
+  const dayStart = startOfUtcDay(currentUpdate.created_at);
+  const dayEnd = endOfUtcDay(currentUpdate.created_at);
 
   const dayUpdates = await db
     .select({ slug: updates.slug })

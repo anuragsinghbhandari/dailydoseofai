@@ -1120,9 +1120,16 @@ async function fetchNews() {
         return;
     }
 
+    const publishedAt = new Date();
+    const rowsToInsert = finalUnique.map((update, index) => ({
+        ...toInsertableUpdate(update),
+        // Archive dates represent when AI Dose publishes the brief; source dates are only used for freshness checks.
+        created_at: new Date(publishedAt.getTime() + index)
+    }));
+
     const inserted = await db
         .insert(updates)
-        .values(finalUnique.map(toInsertableUpdate))
+        .values(rowsToInsert)
         .onConflictDoNothing({ target: updates.slug })
         .returning();
 
