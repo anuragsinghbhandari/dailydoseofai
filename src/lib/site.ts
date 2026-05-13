@@ -1,6 +1,6 @@
 import { absoluteUrl, DEFAULT_DESCRIPTION, SITE_NAME } from "./seo";
 
-export const SITE_TAGLINE = "Daily AI news, explainers, and source-linked reporting.";
+export const SITE_TAGLINE = "Today's AI news, daily explainers, and source-linked reporting.";
 export const SITE_PUBLISHER_NAME = SITE_NAME;
 export const SITE_LAST_REVIEWED = "April 11, 2026";
 export const SITE_CONTACT_EMAIL = "anuragbhandari.dev@gmail.com";
@@ -17,8 +17,10 @@ export function buildOrganizationSchema() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_PUBLISHER_NAME,
+    alternateName: ["AI Dose", "Daily Dose of AI"],
     url: absoluteUrl("/"),
-    description: DEFAULT_DESCRIPTION
+    description: DEFAULT_DESCRIPTION,
+    publishingPrinciples: absoluteUrl("/editorial-policy")
   };
 
   if (contactEmail) {
@@ -41,8 +43,10 @@ export function buildWebsiteSchema() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
+    alternateName: ["AI News Today", "Daily AI News", "Daily Dose of AI"],
     url: absoluteUrl("/"),
     description: DEFAULT_DESCRIPTION,
+    inLanguage: "en",
     publisher: {
       "@type": "Organization",
       name: SITE_PUBLISHER_NAME,

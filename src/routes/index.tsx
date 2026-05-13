@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { consumeScrollRestoreFlag, restoreScrollPosition } from "@/lib/scroll-memory";
-import { createSeoHead } from "@/lib/seo";
+import { absoluteUrl, createSeoHead, truncateDescription } from "@/lib/seo";
 import { ChevronLeft, ChevronRight, Rss } from "lucide-react";
 import { getFeaturedArticles } from "@/server/articles";
 import {
@@ -26,14 +26,140 @@ import {
   getUtcWeekStart
 } from "@/lib/dates";
 
+const HOME_SEO_TITLE = "AI News Today | Daily AI News Briefing | AI Dose";
+const HOME_SEO_DESCRIPTION =
+  "Read today's AI news on AI Dose: daily summaries and source-linked analysis on model launches, research papers, AI tools, policy, and business moves.";
+
+type StructuredUpdate = {
+  title: string;
+  slug: string;
+  summary?: string;
+  category?: string;
+  created_at?: Date | string;
+};
+
+type StructuredArticle = {
+  title: string;
+  slug: string;
+  excerpt?: string;
+  category?: string;
+  publishedAt?: string;
+  updatedAt?: string;
+};
+
+function toIsoDate(value?: Date | string) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function buildHomeCollectionSchema(updates: StructuredUpdate[], articles: StructuredArticle[]) {
+  const latestUpdatedAt = toIsoDate(updates[0]?.created_at);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${absoluteUrl("/")}#daily-ai-news`,
+    name: "AI News Today",
+    alternateName: ["Today's AI News", "Daily AI News", "AI News Roundup"],
+    description: HOME_SEO_DESCRIPTION,
+    url: absoluteUrl("/"),
+    inLanguage: "en",
+    isAccessibleForFree: true,
+    dateModified: latestUpdatedAt,
+    publisher: {
+      "@type": "Organization",
+      name: "AI Dose",
+      url: absoluteUrl("/")
+    },
+    about: [
+      { "@type": "Thing", name: "Artificial intelligence news" },
+      { "@type": "Thing", name: "AI model launches" },
+      { "@type": "Thing", name: "AI research" },
+      { "@type": "Thing", name: "AI tools" },
+      { "@type": "Thing", name: "AI policy" }
+    ],
+    mainEntity: {
+      "@type": "ItemList",
+      name: "Latest daily AI news updates",
+      itemListElement: updates.slice(0, 12).map((update, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          "@type": "NewsArticle",
+          headline: update.title,
+          description: update.summary ? truncateDescription(update.summary, 180) : undefined,
+          articleSection: update.category,
+          datePublished: toIsoDate(update.created_at),
+          dateModified: toIsoDate(update.created_at),
+          url: absoluteUrl(`/update/${update.slug}`),
+          mainEntityOfPage: absoluteUrl(`/update/${update.slug}`)
+        }
+      }))
+    },
+    hasPart: articles.slice(0, 3).map((article) => ({
+      "@type": "Article",
+      headline: article.title,
+      description: article.excerpt,
+      articleSection: article.category,
+      datePublished: article.publishedAt,
+      dateModified: article.updatedAt,
+      url: absoluteUrl(`/article/${article.slug}`)
+    }))
+  };
+}
+
+function buildHomeFaqSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "Where can I read today's AI news?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "AI Dose publishes a daily AI news briefing with short summaries, source links, and deeper analysis for major AI launches, research, tools, policy, and business updates."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "What AI news topics does AI Dose cover?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "AI Dose covers model releases, research papers, AI tools, product launches, policy changes, business moves, and important developments from companies such as OpenAI, Google, Anthropic, Meta, Microsoft, and Nvidia."
+        }
+      },
+      {
+        "@type": "Question",
+        name: "How often is AI Dose updated?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "AI Dose updates the daily AI news feed as new published updates are selected and keeps weekly, monthly, category, and date archives linked from the homepage."
+        }
+      }
+    ]
+  };
+}
+
 export const Route = createFileRoute("/")({
-  head: () =>
-    createSeoHead({
-      title: "AI Dose | Daily AI News and Analysis",
-      description:
-        "Read daily AI news, fast summaries, and detailed analysis on model launches, research, tools, policy, and business moves.",
+  head: ({ loaderData }) => ({
+    ...createSeoHead({
+      title: HOME_SEO_TITLE,
+      description: HOME_SEO_DESCRIPTION,
       pathname: "/"
     }),
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(buildHomeCollectionSchema(loaderData?.latest ?? [], loaderData?.articles ?? []))
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(buildHomeFaqSchema())
+      }
+    ]
+  }),
   component: HomePage,
   loader: async () => {
     const [today, week, month, latest, categories] = await Promise.all([
@@ -113,6 +239,7 @@ function HomePage() {
   const [weekAnchor, setWeekAnchor] = useState(() => getUtcWeekStart());
   const [monthAnchor, setMonthAnchor] = useState(() => getUtcMonthStart());
   const featuredUpdate = loaderData.latest[0] ?? null;
+  const latestUpdateDate = featuredUpdate?.created_at ? formatLongUtcDate(featuredUpdate.created_at) : null;
 
   const isCurrentWeek = weekAnchor.getTime() === getUtcWeekStart().getTime();
   const isCurrentMonth = monthAnchor.getTime() === getUtcMonthStart().getTime();
@@ -172,7 +299,7 @@ function HomePage() {
               className="inline-flex items-center rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm font-medium text-foreground shadow-sm"
             >
               <span className="mr-2 flex h-2 w-2 rounded-full bg-primary"></span>
-              Daily AI briefing
+              Today's AI news briefing
             </motion.div>
 
             <motion.div
@@ -182,11 +309,23 @@ function HomePage() {
               className="space-y-5"
             >
               <h1 className="text-5xl font-heading font-extrabold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl leading-[1.05] text-balance">
-                Daily AI news with summaries and detailed analysis
+                AI news today with daily summaries and detailed analysis
               </h1>
               <p className="mx-auto max-w-3xl text-muted-foreground md:text-xl/relaxed lg:text-2xl/relaxed leading-relaxed">
-                Track AI model releases, product launches, research papers, policy moves, and business shifts with fast summaries up top and deeper context underneath.
+                Read today's AI news in one source-linked briefing covering model releases, product launches, research papers, AI tools, policy moves, and business shifts.
               </p>
+              <div className="mx-auto max-w-3xl rounded-2xl border border-border/60 bg-background/80 p-4 text-left text-sm leading-6 text-muted-foreground shadow-sm md:text-base">
+                <p>
+                  AI Dose is built for readers searching for AI news today: each update starts with
+                  a short summary, then links to deeper context, source material, category archives,
+                  and dated pages for follow-up research.
+                </p>
+                {latestUpdateDate ? (
+                  <p className="mt-2 font-medium text-foreground">
+                    Latest briefing update: {latestUpdateDate}.
+                  </p>
+                ) : null}
+              </div>
             </motion.div>
 
             <motion.div
@@ -196,13 +335,13 @@ function HomePage() {
               className="flex flex-wrap items-center justify-center gap-3 text-sm"
             >
               <span className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-foreground shadow-sm">
+                AI news today
+              </span>
+              <span className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-foreground shadow-sm">
                 Daily AI news roundup
               </span>
               <span className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-foreground shadow-sm">
-                Detailed explainers below every summary
-              </span>
-              <span className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-foreground shadow-sm">
-                Category archives and evergreen guides
+                Source-linked summaries
               </span>
             </motion.div>
 
@@ -232,10 +371,10 @@ function HomePage() {
 
               <div className="flex flex-col gap-3">
                 <Button asChild size="lg" className="rounded-full px-6">
-                  <Link to="/today">Read today's updates</Link>
+                  <Link to="/today">Read today's AI news</Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="rounded-full px-6">
-                  <Link to="/article">Browse detailed articles</Link>
+                  <Link to="/article">Browse AI explainers</Link>
                 </Button>
               </div>
             </motion.div>
@@ -322,6 +461,46 @@ function HomePage() {
             filterStorageKey="home"
             skipInitialAnimation={isRestoringFeedState}
           />
+        </section>
+
+        <section className="grid gap-8 border-y border-border/40 py-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary/80">
+              Daily AI news FAQ
+            </p>
+            <h2 className="text-3xl font-heading font-bold tracking-tight">
+              Quick answers for AI news readers
+            </h2>
+            <p className="text-base leading-7 text-muted-foreground">
+              These answers describe what the homepage covers for readers and search engines
+              looking for today's AI news.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold">Where can I read today's AI news?</h3>
+              <p className="mt-2 text-muted-foreground leading-7">
+                AI Dose publishes a daily AI news briefing with short summaries, source links,
+                and deeper analysis for major AI launches, research, tools, policy, and business
+                updates.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">What AI news topics does AI Dose cover?</h3>
+              <p className="mt-2 text-muted-foreground leading-7">
+                AI Dose covers model releases, research papers, AI tools, product launches, policy
+                changes, business moves, and important developments from companies such as OpenAI,
+                Google, Anthropic, Meta, Microsoft, and Nvidia.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">How often is AI Dose updated?</h3>
+              <p className="mt-2 text-muted-foreground leading-7">
+                AI Dose updates the daily AI news feed as new published updates are selected and
+                keeps weekly, monthly, category, and date archives linked from the homepage.
+              </p>
+            </div>
+          </div>
         </section>
 
         <section>

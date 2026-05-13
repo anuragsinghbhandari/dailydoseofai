@@ -1,9 +1,9 @@
 const FALLBACK_SITE_URL = "https://www.dailydoseofai.tech";
 
 export const SITE_NAME = "AI Dose";
-export const DEFAULT_TITLE = "AI Dose | Daily AI News and Analysis";
+export const DEFAULT_TITLE = "AI News Today | Daily AI News Briefing | AI Dose";
 export const DEFAULT_DESCRIPTION =
-  "AI Dose tracks the most important AI news, research, tools, and product launches in a fast daily briefing.";
+  "AI Dose tracks today's AI news with daily summaries and source-linked analysis on model launches, research, tools, policy, and business moves.";
 
 type SeoInput = {
   title: string;

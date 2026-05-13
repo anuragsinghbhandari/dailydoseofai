@@ -148,7 +148,7 @@ function RootLayout() {
                         Contact
                       </Link>
                       <Link to="/today" className="text-foreground hover:text-primary hover:underline">
-                        Today
+                        Today's AI News
                       </Link>
                       <Link to="/editorial-policy" className="text-foreground hover:text-primary hover:underline">
                         Editorial Policy
